@@ -1,0 +1,7 @@
+{
+  "_comment": "Detection zones for the edge agent (Milestone 2). Polygon points are pixel coords in the camera frame. Not used by the backend.",
+  "camera": {"width": 1920, "height": 1080},
+  "zones": {
+    "T1": [[100, 100], [300, 100], [300, 250], [100, 250]]
+  }
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tables">
+<title>TableWatch</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Tables</h1>
+    <div class="counts">
+      <span class="pill red"><b id="n-red">0</b> clear</span>
+      <span class="pill gray"><b id="n-gray">0</b> seated</span>
+      <span class="pill green"><b id="n-green">0</b> free</span>
+    </div>
+    <div id="conn" class="conn">Connecting…</div>
+  </header>
+  <main id="floor"></main>
+  <div id="offline" class="offline" hidden>Connection lost. Reconnecting… (statuses may be out of date)</div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

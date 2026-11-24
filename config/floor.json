@@ -1,0 +1,16 @@
+{
+  "_comment": "Floor map for the dashboard. x/y = tile center as % of the floor area. shape: round | square | rect.",
+  "tables": [
+    {"id": "T1", "name": "1", "x": 14, "y": 18, "shape": "round",  "seats": 2},
+    {"id": "T2", "name": "2", "x": 38, "y": 18, "shape": "round",  "seats": 2},
+    {"id": "T3", "name": "3", "x": 62, "y": 18, "shape": "square", "seats": 4},
+    {"id": "T4", "name": "4", "x": 86, "y": 18, "shape": "square", "seats": 4},
+    {"id": "T5", "name": "5", "x": 14, "y": 50, "shape": "square", "seats": 4},
+    {"id": "T6", "name": "6", "x": 44, "y": 50, "shape": "rect",   "seats": 6},
+    {"id": "T7", "name": "7", "x": 80, "y": 50, "shape": "rect",   "seats": 8},
+    {"id": "T8", "name": "8", "x": 14, "y": 82, "shape": "round",  "seats": 2},
+    {"id": "T9", "name": "9", "x": 38, "y": 82, "shape": "square", "seats": 4},
+    {"id": "T10", "name": "10", "x": 62, "y": 82, "shape": "square", "seats": 4},
+    {"id": "T11", "name": "11", "x": 86, "y": 82, "shape": "round", "seats": 2}
+  ]
+}
