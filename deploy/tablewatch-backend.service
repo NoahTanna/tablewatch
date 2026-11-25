@@ -1,0 +1,17 @@
+[Unit]
+Description=TableWatch backend + dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=tablewatch
+WorkingDirectory=/opt/tablewatch
+StateDirectory=tablewatch
+Environment=TABLEWATCH_DB=/var/lib/tablewatch/tablewatch.db
+Environment=CLEAR_AFTER_MIN=3
+ExecStart=/opt/tablewatch/.venv/bin/uvicorn backend.app:create_app --factory --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

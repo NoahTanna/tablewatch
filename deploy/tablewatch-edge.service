@@ -1,0 +1,15 @@
+[Unit]
+Description=TableWatch edge agent (camera -> table states)
+After=tablewatch-backend.service
+Wants=tablewatch-backend.service
+
+[Service]
+User=tablewatch
+WorkingDirectory=/opt/tablewatch
+EnvironmentFile=/etc/tablewatch/edge.env
+ExecStart=/bin/sh -c 'exec /opt/tablewatch/.venv/bin/python -m edge.agent --source "$CAMERA_URL" --backend http://127.0.0.1:8000 $EDGE_ARGS'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,4 +1,5 @@
 -r requirements.txt
+-r requirements-edge.txt
 # Tests only (MIT / BSD licensed)
 pytest==9.2.0
 httpx==0.28.1
