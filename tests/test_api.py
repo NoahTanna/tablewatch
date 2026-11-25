@@ -119,3 +119,10 @@ def test_sse_stream_pushes_updates(tmp_path, floor_path):
             assert (table["id"], table["state"]) == ("T2", "OCCUPIED")
     finally:
         server.should_exit = True
+
+
+def test_last_event_at_tracks_camera(setup):
+    client, _, clock = setup
+    assert client.get("/api/tables").json()["last_event_at"] is None
+    client.post("/api/events", json={"table_id": "T1", "people": False, "dishes": False})
+    assert client.get("/api/tables").json()["last_event_at"] == clock.t

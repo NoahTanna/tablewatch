@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zone Editor</title>
+<style>
+  body { margin: 0; font: 15px -apple-system, BlinkMacSystemFont, Arial, sans-serif; background: #15171a; color: #f2f3f5; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 16px; background: #1f2226; }
+  .bar input[type=text] { width: 70px; font: inherit; padding: 6px; }
+  button { font: inherit; padding: 6px 12px; cursor: pointer; }
+  .help { padding: 8px 16px; color: #9aa0a6; }
+  .wrap { padding: 0 16px 16px; }
+  canvas { max-width: 100%; border: 1px solid #333; cursor: crosshair; }
+  textarea { width: 100%; height: 180px; font: 13px monospace; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <label>1. Room photo <input type="file" id="file" accept="image/*"></label>
+  <label>2. Table id <input type="text" id="tid" value="T1"></label>
+  <button id="done">Finish zone</button>
+  <button id="undo">Undo point</button>
+  <button id="del">Delete this table's zone</button>
+</div>
+<p class="help">Open the photo from <code>python -m edge.snapshot</code>. Type a table id (same as config/floor.json), click around the table <b>and its chairs</b>, then "Finish zone". Repeat for each table. Copy the JSON below into <code>config/zones.json</code>. Nothing leaves your computer.</p>
+<div class="wrap">
+  <canvas id="c" width="960" height="540"></canvas>
+  <p>3. config/zones.json (you can also paste an existing file here, then click Load)</p>
+  <textarea id="json"></textarea>
+  <button id="load">Load JSON from box</button>
+</div>
+<script>
+const c = document.getElementById("c"), ctx = c.getContext("2d"), out = document.getElementById("json");
+let img = null, zones = {}, current = [];
+
+document.getElementById("file").onchange = (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const im = new Image();
+  im.onload = () => { img = im; c.width = im.width; c.height = im.height; draw(); };
+  im.src = URL.createObjectURL(f);
+};
+c.onclick = (e) => {
+  const r = c.getBoundingClientRect();
+  current.push([Math.round((e.clientX - r.left) * c.width / r.width), Math.round((e.clientY - r.top) * c.height / r.height)]);
+  draw();
+};
+document.getElementById("done").onclick = () => {
+  if (current.length >= 3) zones[document.getElementById("tid").value.trim()] = current;
+  current = []; draw();
+};
+document.getElementById("undo").onclick = () => { current.pop(); draw(); };
+document.getElementById("del").onclick = () => { delete zones[document.getElementById("tid").value.trim()]; draw(); };
+document.getElementById("load").onclick = () => {
+  try { zones = JSON.parse(out.value).zones || {}; draw(); } catch (e) { out.value = "Not valid JSON: " + e.message; }
+};
+
+function poly(pts, color, close) {
+  if (!pts.length) return;
+  ctx.beginPath(); ctx.moveTo(...pts[0]); pts.slice(1).forEach((p) => ctx.lineTo(...p));
+  if (close) ctx.closePath();
+  ctx.lineWidth = Math.max(2, c.width / 400); ctx.strokeStyle = color; ctx.stroke();
+  if (close) { ctx.fillStyle = color + "33"; ctx.fill(); }
+  pts.forEach((p) => { ctx.fillStyle = color; ctx.fillRect(p[0] - 4, p[1] - 4, 8, 8); });
+}
+function draw() {
+  ctx.fillStyle = "#222"; ctx.fillRect(0, 0, c.width, c.height);
+  if (img) ctx.drawImage(img, 0, 0);
+  ctx.font = `bold ${Math.max(16, c.width / 50)}px sans-serif`;
+  for (const [id, pts] of Object.entries(zones)) {
+    poly(pts, "#1f9d55", true);
+    const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length, cy = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+    ctx.fillStyle = "#fff"; ctx.fillText(id, cx, cy);
+  }
+  poly(current, "#f9ab00", false);
+  out.value = JSON.stringify({ camera: { width: c.width, height: c.height }, zones }, null, 1)
+    .replace(/\[\n\s+(\d+),\n\s+(\d+)\n\s+\]/g, "[$1, $2]");
+}
+draw();
+</script>
+</body>
+</html>

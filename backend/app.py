@@ -39,6 +39,7 @@ def create_app(db_path=None, floor_path=None, clear_after_min=None, clock=time.t
     db.remove_except(ids)
 
     subscribers = set()  # one asyncio.Queue per connected dashboard
+    last_event = {"at": None}  # when the camera side last reported (in memory)
 
     def publish(table):
         msg = json.dumps({"now": clock(), "table": table})
@@ -78,13 +79,15 @@ def create_app(db_path=None, floor_path=None, clear_after_min=None, clock=time.t
     @app.post("/api/events")
     def post_event(ev: Event):
         old = get_or_404(ev.table_id)
+        last_event["at"] = clock()
         new = state.observe(old, ev.people, ev.dishes, clock(), clear_after)
         save_and_publish(old, new)
         return new
 
     @app.get("/api/tables")
     def get_tables():
-        return {"now": clock(), "clear_after_min": clear_after_min, "tables": db.all()}
+        return {"now": clock(), "clear_after_min": clear_after_min,
+                "last_event_at": last_event["at"], "tables": db.all()}
 
     @app.post("/api/tables/{table_id}/clear")
     def clear_table(table_id: str):

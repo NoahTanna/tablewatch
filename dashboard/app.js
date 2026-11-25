@@ -3,6 +3,8 @@ const LABELS = { FREE: "FREE", OCCUPIED: "SEATED", NEEDS_CLEARING: "CLEAR" };
 const floorEl = document.getElementById("floor");
 const tiles = {};   // table id -> {el, table}
 let clockOffset = 0; // server time - local time, in seconds
+let lastEventAt = null; // server time of the camera's last report
+const CAMERA_STALE_S = 120;
 
 function nowServer() { return Date.now() / 1000 + clockOffset; }
 
@@ -70,7 +72,20 @@ async function onTap(id) {
 async function loadAll() {
   const data = await (await fetch("/api/tables")).json();
   clockOffset = data.now - Date.now() / 1000;
+  lastEventAt = data.last_event_at;
   data.tables.forEach(render);
+  renderCamera();
+}
+
+function renderCamera() {
+  const el = document.getElementById("nocam");
+  const age = lastEventAt == null ? null : nowServer() - lastEventAt;
+  const stale = age == null || age > CAMERA_STALE_S;
+  el.hidden = !stale || !document.getElementById("offline").hidden;
+  el.textContent = age == null
+    ? "Waiting for camera data… (table colors are not live yet)"
+    : `No camera data for ${Math.floor(age / 60)} min. Check the camera box. Table colors may be out of date.`;
+  document.body.classList.toggle("stale", stale || !document.getElementById("offline").hidden);
 }
 
 function setOnline(ok) {
@@ -87,7 +102,9 @@ function connect() {
   es.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     clockOffset = msg.now - Date.now() / 1000;
+    lastEventAt = msg.now;
     render(msg.table);
+    renderCamera();
   };
   es.onerror = () => setOnline(false); // EventSource reconnects by itself
 }
@@ -95,7 +112,9 @@ function connect() {
 async function main() {
   buildFloor(await (await fetch("/api/floor")).json());
   connect();
-  setInterval(() => Object.values(tiles).forEach((t) => t.table && renderTimer(t)), 1000);
+  setInterval(() => { Object.values(tiles).forEach((t) => t.table && renderTimer(t)); renderCamera(); }, 1000);
+  // Full refresh every 30 s: picks up the camera's heartbeat and anything missed.
+  setInterval(() => loadAll().catch(() => setOnline(false)), 30000);
   // iPad wakes from sleep: refresh everything.
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) loadAll().catch(() => setOnline(false));
