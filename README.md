@@ -58,3 +58,8 @@ simulator.py       fake edge agent for demos
 
 - No authentication. Anyone on the network can post events or clear tables. This is fine on a private LAN but has to be fixed before a real deployment.
 - Plain HTTP on the LAN.
+
+## Browser-only demo
+
+`docs/demo.html` is a standalone copy of the dashboard that runs entirely in the browser, with a
+"pretend camera" panel. No server is needed. It is for showing the idea, not part of the product.
