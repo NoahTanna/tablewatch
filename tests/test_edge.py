@@ -26,10 +26,18 @@ def test_observe_tables_assigns_people_and_dishes():
     assert observe_tables(dets, ZONES) == {"T1": (True, False), "T2": (False, True)}
 
 
-def test_person_counts_by_bottom_center():
-    # Box center is above the zone, but the person's feet/chair are inside it.
-    dets = [("person", 0.9, (20, -150, 60, 50))]
-    assert observe_tables(dets, ZONES)["T1"] == (True, False)
+def test_person_counts_for_table_with_most_overlap():
+    # Two stacked zones (camera looking down at an angle). A guest of the lower
+    # table leans into the upper zone; they must count for one table only.
+    zones = {"A": [(0, 0), (100, 0), (100, 100), (0, 100)],
+             "B": [(0, 100), (100, 100), (100, 200), (0, 200)]}
+    obs = observe_tables([("person", 0.9, (20, 70, 60, 190))], zones)
+    assert obs == {"A": (False, False), "B": (True, False)}
+
+
+def test_person_mostly_outside_zones_is_ignored():
+    dets = [("person", 0.9, (80, 0, 400, 100))]  # walking past, barely touching T1
+    assert observe_tables(dets, ZONES)["T1"] == (False, False)
 
 
 def test_debounce_needs_consecutive_samples():
@@ -45,6 +53,15 @@ def test_debounce_needs_consecutive_samples():
         assert d.update("T1", True, True) is None
     assert d.update("T1", True, True) == (True, True)
     assert d.current("T1") == (True, True) and d.known() == ["T1"]
+
+
+def test_debounce_dishes_vanishing_needs_double_confirmation():
+    d = Debouncer(confirm=2)
+    d.update("T1", False, True)
+    assert d.update("T1", False, True) == (False, True)
+    for _ in range(3):  # dishes missed for 3 samples: not enough
+        assert d.update("T1", False, False) is None
+    assert d.update("T1", False, False) == (False, False)
 
 
 def test_decode_finds_planted_box():
@@ -74,6 +91,9 @@ def test_agent_on_video_with_fake_detector(tmp_path, monkeypatch):
     class FakeDetector:
         def __init__(self, *a, **k):
             pass
+
+        def detect_tables(self, frame, zones):
+            return self.detect(frame)
 
         def detect(self, frame):
             b, g, r = frame[60, 160]

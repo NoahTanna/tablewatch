@@ -106,7 +106,7 @@ let picked = "T1";
 
 function observe(t, people, dishes) {
   if (people) { t.state = "OCCUPIED"; t.since = null; }
-  else if (dishes) { if (t.since == null) t.since = now(); }
+  else if (dishes) { if (t.since == null && t.state === "OCCUPIED") t.since = now(); } // set tables stay free
   else { t.state = "FREE"; t.since = null; }
   tick(t);
 }

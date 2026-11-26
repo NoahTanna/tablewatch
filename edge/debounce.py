@@ -1,6 +1,9 @@
 """Ignore flickers: a value (people / dishes) only changes after it is seen
 `confirm` samples in a row. A waiter walking past does not seat a table, and a
-glass hidden for one frame does not clear it."""
+glass hidden for one frame does not clear it.
+
+Dishes disappearing needs twice as many samples: if a dirty table wrongly reads
+as clean, it goes green and won't turn red again until new guests sit there."""
 
 
 class Debouncer:
@@ -18,7 +21,8 @@ class Debouncer:
             cand, count = self.streak.get(key, (value, 0))
             count = count + 1 if cand == value else 1
             self.streak[key] = (value, count)
-            if count >= self.confirm and self.stable.get(key) != value:
+            needed = self.confirm * 2 if (signal == "dishes" and not value and key in self.stable) else self.confirm
+            if count >= needed and self.stable.get(key) != value:
                 self.stable[key] = value
                 changed = True
         if changed and all((table_id, s) in self.stable for s in ("people", "dishes")):

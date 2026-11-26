@@ -100,7 +100,8 @@ def main(argv=None):
     ap.add_argument("--backend", default="http://localhost:8000")
     ap.add_argument("--every", type=float, default=3, help="seconds between sampled frames")
     ap.add_argument("--confirm", type=int, default=3, help="samples in a row before a change counts")
-    ap.add_argument("--conf", type=float, default=0.35, help="detector confidence threshold")
+    ap.add_argument("--conf", type=float, default=0.35, help="confidence needed for a person")
+    ap.add_argument("--dish-conf", type=float, default=0.25, help="confidence needed for a dish")
     ap.add_argument("--resync", type=float, default=30, help="re-send all table states every N s")
     ap.add_argument("--log", help="write stable changes to this CSV (time_s,table_id,people,dishes)")
     ap.add_argument("--dry-run", action="store_true", help="do not contact the backend")
@@ -108,7 +109,7 @@ def main(argv=None):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     zones = load_zones(args.zones)
-    detector = Detector(args.model, conf=args.conf)
+    detector = Detector(args.model, conf=args.conf, dish_conf=args.dish_conf)
     debouncer = Debouncer(args.confirm)
     live = args.source.startswith(("rtsp://", "rtsps://", "http://", "https://"))
     frames = live_frames(args.source, args.every) if live else video_frames(args.source, args.every)
@@ -127,12 +128,13 @@ def main(argv=None):
 
     log.info("watching %d tables from %s", len(zones), "camera" if live else args.source)
     for t, frame in frames:
-        observations = observe_tables(detector.detect(frame), zones)
+        observations = observe_tables(detector.detect_tables(frame, zones), zones)
         del frame  # never kept
         for tid, (people, dishes) in observations.items():
             changed = debouncer.update(tid, people, dishes)
             if changed is not None:
-                log.info("t=%.0fs %s people=%s dishes=%s", t, tid, *changed)
+                when = time.strftime("%H:%M:%S", time.localtime(t)) if live else f"t={t:.0f}s"
+                log.info("%s %s people=%s dishes=%s", when, tid, *changed)
                 if out:
                     out.writerow([round(t, 1), tid, int(changed[0]), int(changed[1])])
                 send(tid, *changed)

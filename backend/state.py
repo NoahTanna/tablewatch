@@ -7,6 +7,11 @@ The backend turns that into one of three states:
   FREE            no people, no dishes
   NEEDS_CLEARING  dishes, no people, for at least `clear_after` seconds
 
+The timer only starts when guests were seated and then left dishes behind
+(state was OCCUPIED). A FREE table with dishes but no guests is a freshly set
+table (clean glasses, cutlery) and stays FREE. On real footage of a set dining
+room the detector sees "dishes" on every set table.
+
 While dishes sit unattended for less than `clear_after`, the table keeps its
 previous state (e.g. guests stepped away briefly). `unattended_since` records
 when that started.
@@ -29,7 +34,7 @@ def observe(table, people, dishes, now, clear_after):
         t["state"] = OCCUPIED
         t["unattended_since"] = None
     elif dishes:
-        if t["unattended_since"] is None:
+        if t["unattended_since"] is None and t["state"] == OCCUPIED:
             t["unattended_since"] = now
     else:
         t["state"] = FREE

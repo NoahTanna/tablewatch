@@ -16,19 +16,39 @@ DISH = {39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55}
 
 
 class Detector:
-    def __init__(self, model_path, conf=0.35, threads=2):
+    def __init__(self, model_path, conf=0.35, dish_conf=0.25, threads=2):
         opts = ort.SessionOptions()
         opts.intra_op_num_threads = threads
         self.session = ort.InferenceSession(model_path, opts, providers=["CPUExecutionProvider"])
         self.input_name = self.session.get_inputs()[0].name
         self.size = self.session.get_inputs()[0].shape[2]  # 640
         self.conf = conf
+        self.dish_conf = dish_conf  # zoomed table crops: small far-away cups score low
         self.grids, self.strides = _grids(self.size)
 
-    def detect(self, frame):
+    def detect(self, frame, conf=None):
         img, ratio = _letterbox(frame, self.size)
         out = self.session.run(None, {self.input_name: img[None]})[0][0]
-        return _decode(out, ratio, self.grids, self.strides, self.conf)
+        return _decode(out, ratio, self.grids, self.strides, conf or self.conf)
+
+    def detect_tables(self, frame, zones, margin=0.15):
+        """People from the whole frame (they are big), dishes from a zoomed crop of
+        each table zone (they are small: on real overhead footage the whole-frame pass
+        missed most of them). Costs one extra model run per table."""
+        people = [d for d in self.detect(frame) if d[0] == "person"]
+        dishes = []
+        h, w = frame.shape[:2]
+        for poly in zones.values():
+            xs, ys = [p[0] for p in poly], [p[1] for p in poly]
+            mx, my = (max(xs) - min(xs)) * margin, (max(ys) - min(ys)) * margin
+            x1, y1 = int(max(0, min(xs) - mx)), int(max(0, min(ys) - my))
+            x2, y2 = int(min(w, max(xs) + mx)), int(min(h, max(ys) + my))
+            if x2 - x1 < 8 or y2 - y1 < 8:
+                continue
+            for kind, score, (a, b, c, d) in self.detect(frame[y1:y2, x1:x2], self.dish_conf):
+                if kind == "dish":
+                    dishes.append((kind, score, (a + x1, b + y1, c + x1, d + y1)))
+        return people + dishes
 
 
 def _letterbox(frame, size):

@@ -1,7 +1,7 @@
 # TableWatch
 
 Shows live table status on an iPad at the host stand: **green = FREE**, **gray = SEATED**, **red = NEEDS CLEARING**.
-Red means dishes are on the table and nobody has been there for N minutes (default 3). Tap a red table once it has been cleared.
+Red means guests were seated, then left, and dishes have sat there with nobody at the table for N minutes (default 3). A freshly set table with clean glasses stays green. Tap a red table once it has been cleared.
 
 ```
 IP camera --RTSP--> edge agent (mini PC) --people/dishes per table--> backend --live updates--> iPad dashboard
@@ -80,7 +80,10 @@ Settings worth tuning:
 |---|---|---|
 | `--every` | seconds between sampled frames | 3 |
 | `--confirm` | samples in a row before a change counts (filters out waiters walking past) | 3 |
-| `--conf` | detector confidence threshold | 0.35 |
+| `--conf` | confidence needed to count a person | 0.35 |
+| `--dish-conf` | confidence needed to count a dish | 0.25 |
+
+The agent looks for people in the whole frame and for dishes in a zoomed crop of each table, because dishes far from the camera are tiny. That's one model run per table per sample, about 0.2 s each on a 4-core CPU. With many tables, raise `--every`.
 
 ## 3. Go live on a mini PC
 
@@ -130,6 +133,7 @@ simulator.py    fake edge agent for demos
   - Edge: onnxruntime (MIT), numpy (BSD), opencv-python-headless (Apache-2.0; bundles FFmpeg, LGPL, as a separate library).
   - Model: YOLOX-s (Apache-2.0).
   - No AGPL. The model was trained on COCO; have counsel confirm that's fine for your commercial use.
-- **The model has no "plate" class.** "Dishes" means cups, glasses, bowls, bottles, cutlery and common foods. A bare empty plate may be missed. Measure this on real footage in step 2. If it matters, the fix is fine-tuning on labeled frames from your own restaurant.
+- **Tested on real restaurant footage, not yet on your restaurant.** On a free time-lapse filmed from a fixed high camera (`eval/mixkit-4385/`), the detector got people right 92% of the time (it missed none) and dishes right 97% of the time (no phantom dishes). Plates with food are detected. The model has no "plate" class, so bare empty plates may still be missed. Lighting, camera angle and your tableware will change these numbers, so measure on your own footage in step 2.
+- Zones matter: when the camera looks down at an angle, guests overlap the neighboring tables. Each person counts only for the table whose zone covers most of them, so draw zones carefully where tables are close together.
 - No login: anyone on the restaurant network can post events or clear tables. Keep it on a private network.
 - Plain HTTP on the local network.
