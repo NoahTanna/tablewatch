@@ -33,7 +33,20 @@ Requires Python 3.10+.
 
 Open http://localhost:8000. Tests: `.venv/bin/pytest -q`
 
-`docs/demo.html` is a standalone copy of the dashboard that runs in any browser with no server, for showing the idea.
+Settings (environment variables, in minutes; on the mini PC, put them in `deploy/tablewatch-backend.service`):
+
+| Variable | Default | What it controls |
+|---|---|---|
+| `CLEAR_AFTER_MIN` | 3 | guests gone, dishes left: turns red after this |
+| `NOT_SERVED_MIN` | 10 | seated, nothing arrived or removed: turns orange after this |
+| `PLATES_GONE_MIN` | 3 | plates gone this long before the tile says PLATES GONE |
+| `CHECK_HINT_MIN` | 10 | plates gone this long before the *check?* chip |
+| `LONG_STAY_MIN` | 90 | *long stay* threshold until 5 parties have finished tonight (then 1.5× the median stay) |
+| `MIN_VISIT_MIN` | 2 | shorter "visits" (staff at the table) are left out of tonight's averages |
+
+Also: `PORT` (8000), `TABLEWATCH_DB` (`tablewatch.db`; demo mode uses `demo.db`), `TABLEWATCH_FLOOR` (`config/floor.json`).
+
+`docs/demo.html` is a standalone copy of the original, simpler dashboard that runs in any browser with no server, for showing the idea. It doesn't have the meal stages yet.
 
 ### Open it on an iPad (same Wi-Fi)
 
