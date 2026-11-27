@@ -135,3 +135,22 @@ def test_evaluate_alerts_and_report(tmp_path, capsys):
     out = capsys.readouterr().out
     line = next(l for l in out.splitlines() if l.startswith("T1"))
     assert line.split()[3:] == ["1", "1", "0", "+9s"]
+
+
+def test_partial_second_box_on_same_person_is_dropped():
+    # Real case from the restaurant clip: one diner detected twice, the second box
+    # just their upper body, which landed in the next table's zone.
+    grids, strides = _grids(640)
+    out = np.full((len(grids), 85), -10.0, dtype=np.float32)
+    out[:, 4:] = 0.0
+
+    def plant(i, cx, cy, w, h, score):
+        gx, gy, st = grids[i][0], grids[i][1], strides[i][0]
+        out[i, :4] = [cx / st - gx, cy / st - gy, np.log(w / st), np.log(h / st)]
+        out[i, 4], out[i, 5] = score, 1.0  # class 0 = person
+
+    plant(100, 164, 100, 120, 180, 0.9)   # whole person
+    plant(101, 165, 60, 90, 100, 0.6)     # upper body only, inside the first box
+    plant(102, 400, 100, 120, 180, 0.8)   # a different person
+    people = [r for r in _decode(out, 1.0, grids, strides, 0.35) if r[0] == "person"]
+    assert len(people) == 2

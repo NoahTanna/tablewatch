@@ -1,0 +1,6 @@
+{"room": {"landmarks": [{"label": "bench", "x": 88, "y": 50, "w": 6, "h": 80}], "labels": [{"text": "window", "x": 50, "y": 7}], "host": {"x": 10, "y": 90}},
+ "tables": [
+  {"id": "T1", "name": "1", "x": 45, "y": 16, "shape": "square", "seats": 4, "section": "Wall"},
+  {"id": "T2", "name": "2", "x": 45, "y": 37, "shape": "square", "seats": 4, "section": "Wall"},
+  {"id": "T3", "name": "3", "x": 45, "y": 58, "shape": "square", "seats": 4, "section": "Wall"},
+  {"id": "T4", "name": "4", "x": 45, "y": 82, "shape": "rect", "seats": 6, "section": "Wall"}]}

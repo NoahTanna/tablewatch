@@ -85,7 +85,20 @@ def _decode(out, ratio, grids, strides, conf):
         if not m.any():
             continue
         idx = cv2.dnn.NMSBoxes(boxes[m].tolist(), score[m].tolist(), conf, 0.45)
-        for i in np.array(idx).flatten():
+        kept = []
+        for i in np.array(idx).flatten():  # NMS returns highest score first
             x, y, w, h = boxes[m][i]
-            results.append((kind, float(score[m][i]), (float(x), float(y), float(x + w), float(y + h))))
+            box = (float(x), float(y), float(x + w), float(y + h))
+            if kind == "person" and any(_inside_share(box, k) >= 0.8 for k in kept):
+                continue  # a second, partial box on someone already found (e.g. just their upper body)
+            kept.append(box)
+            results.append((kind, float(score[m][i]), box))
     return results
+
+
+def _inside_share(a, b):
+    """Share of box a's area that lies inside box b."""
+    iw = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
+    ih = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+    area = max(1e-6, (a[2] - a[0]) * (a[3] - a[1]))
+    return iw * ih / area

@@ -176,6 +176,7 @@ simulator.py    fake edge agent for demos
   - Model: YOLOX-s (Apache-2.0).
   - No AGPL. The model was trained on COCO; have counsel confirm that's fine for your commercial use.
 - **Tested on real restaurant footage, not yet on your restaurant.** On a free time-lapse filmed from a fixed high camera (`eval/mixkit-4385/`), the detector got people right 92% of the time (it missed none) and dishes right 97% of the time (no phantom dishes). Plates with food are detected. The model has no "plate" class, so bare empty plates may still be missed. Lighting, camera angle and your tableware will change these numbers, so measure on your own footage in step 2.
+- **Camera placement matters.** In the real-footage test, a single cup about 15 pixels wide at the far end of a 720p view was missed after video compression. Use a 1080p or better camera, mounted high and as close to the tables as practical.
 - Zones matter: when the camera looks down at an angle, guests overlap the neighboring tables. Each person counts only for the table whose zone covers most of them, so draw zones carefully where tables are close together.
 - No login: anyone on the restaurant network can post events or clear tables. Keep it on a private network.
 - Plain HTTP on the local network.
