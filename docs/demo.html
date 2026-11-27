@@ -1,10 +1,12 @@
 <title>TableWatch Demo</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-/* Layout: host-stand dashboard on top (same as the real app), "pretend camera" controls below. Deliberately dark-only: it lives in a dim dining room. */
+/* Layout: host-stand screen on top (same look as the real app), "pretend camera" controls below.
+   Deliberately dark-only: it lives in a dim dining room. */
 :root {
   --bg: #15171a; --panel: #1f2226; --line: #2c3036; --text: #f2f3f5; --muted: #9aa0a6;
-  --free: #1f9d55; --occupied: #5f6670; --clear: #d93025; --note: #f9ab00;
+  --free: #1f9d55; --occupied: #5f6670; --left: #474d55; --attention: #e37400; --clear: #d93025;
+  --hint: #f6c76b; --note: #f9ab00;
   --font: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   color-scheme: dark;
 }
@@ -15,17 +17,26 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
 .wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 .intro { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; line-height: 1.5; }
 .intro b { color: var(--text); }
-.intro p { margin: 0; color: var(--muted); max-width: 75ch; }
+.intro p { margin: 0; color: var(--muted); max-width: 80ch; }
 .intro p + p { margin-top: 6px; }
 
 .screen { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--bg); }
-header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 18px; background: var(--panel); }
-h1 { margin: 0; font-size: 24px; }
-.counts { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
-.pill { padding: 4px 14px; border-radius: 999px; font-size: 16px; color: #fff; }
-.pill b { font-size: 19px; margin-right: 3px; }
-.pill.red { background: var(--clear); } .pill.gray { background: var(--occupied); } .pill.green { background: var(--free); }
-.live { color: var(--muted); font-size: 14px; } .live::before { content: "● "; color: var(--free); }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 10px 18px; background: var(--panel); }
+h1 { margin: 0; font-size: 22px; }
+.fill { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.fill-text { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fill-text b { color: var(--text); }
+.fill-bar { height: 6px; border-radius: 3px; background: #2c3036; overflow: hidden; }
+.fill-bar div { height: 100%; width: 0; background: var(--occupied); transition: width .5s; }
+.tonight { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); }
+.sound { font: inherit; font-size: 14px; color: var(--muted); background: transparent; border: 1px solid #3a3f46;
+  border-radius: 999px; padding: 6px 14px; min-height: 36px; cursor: pointer; }
+.sound.on { color: var(--text); border-color: var(--muted); }
+.live { color: var(--muted); font-size: 13px; } .live::before { content: "● "; color: var(--free); }
+.banner { display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 8px 18px; font-size: 16px; font-weight: 700;
+  background: var(--clear); color: #fff; }
+.banner.only-attention { background: var(--attention); }
+.banner[hidden] { display: none; }
 
 #floor { position: relative; width: 100%; aspect-ratio: 16 / 10; max-width: 100%; }
 .table { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column;
@@ -33,115 +44,187 @@ h1 { margin: 0; font-size: 24px; }
   border: 3px solid rgba(255,255,255,0.15); background: var(--free); color: #fff; transition: background .3s;
   font: inherit; padding: 0; cursor: default; }
 .table.round { border-radius: 50%; }
-.table .name { font-size: clamp(18px, 4.2vw, 48px); font-weight: 800; line-height: 1; }
-.table .label { font-size: clamp(9px, 1.4vw, 15px); font-weight: 700; letter-spacing: .05em; margin-top: 2px; }
-.table .timer { font-size: clamp(11px, 2vw, 22px); font-weight: 700; font-variant-numeric: tabular-nums; }
-.table.OCCUPIED { background: var(--occupied); }
-.table.NEEDS_CLEARING { background: var(--clear); border-color: #fff; cursor: pointer; animation: pulse 1.6s ease-in-out infinite; }
+.table .name { font-size: clamp(16px, 4vw, 44px); font-weight: 800; line-height: 1; }
+.table .label { font-size: clamp(7px, 1.25vw, 13px); font-weight: 700; letter-spacing: .04em; margin-top: 2px; white-space: nowrap; }
+.table .timer { font-size: clamp(9px, 1.7vw, 18px); font-weight: 600; font-variant-numeric: tabular-nums; min-height: 1.2em; }
+.table .hints { position: absolute; bottom: -10px; display: flex; gap: 3px; }
+.table .hint { font-size: clamp(8px, 1.1vw, 12px); font-weight: 700; padding: 1px 6px; border-radius: 999px;
+  background: var(--bg); color: var(--hint); border: 1px solid var(--hint); white-space: nowrap; }
+.table.SEATED, .table.SERVED, .table.FINISHING { background: var(--occupied); }
+.table.LEFT { background: var(--left); }
+.table.not_served { background: var(--attention); border-color: #fff; cursor: pointer; }
+.table.CLEAR { background: var(--clear); border-color: #fff; cursor: pointer; animation: pulse 1.6s ease-in-out infinite; }
 .table.picked { outline: 3px dashed var(--note); outline-offset: 4px; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(217,48,37,.35); } }
-@media (prefers-reduced-motion: reduce) { .table.NEEDS_CLEARING { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .table.CLEAR { animation: none; } }
 
 .cam { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px;
   display: flex; flex-direction: column; gap: 12px; }
 .cam h2 { margin: 0; font-size: 17px; }
-.cam .hint { margin: 0; color: var(--muted); }
+.cam .hinttext { margin: 0; color: var(--muted); max-width: 80ch; line-height: 1.5; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .row .lbl { color: var(--muted); min-width: 90px; }
 button.chip, button.act { font: inherit; color: var(--text); background: #2a2e34; border: 1px solid #3a3f46;
   border-radius: 8px; padding: 8px 12px; cursor: pointer; min-height: 40px; }
 button.chip { min-width: 44px; font-weight: 700; }
 button.chip[aria-pressed="true"] { background: var(--note); color: #000; border-color: var(--note); }
-button.act:hover, button.chip:hover { border-color: var(--muted); }
+button.chip.manual { border-color: var(--note); }
+button.act:hover, button.chip:hover, .sound:hover { border-color: var(--muted); }
 button:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
 .log { font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: var(--muted); max-height: 7.5em; overflow: auto; margin: 0; white-space: pre-wrap; }
 label.toggle { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 18px; color: var(--muted); font-size: 13px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; background: var(--c); }
 </style>
 
 <div class="wrap">
   <div class="intro">
-    <p><b>This is a demo copy of the host-stand screen.</b> It runs inside your browser and uses the same rules as the real app. There's no camera, so you play the camera with the buttons below, or leave "Auto-play" on and watch.</p>
-    <p>In this demo a table turns red <b>20 seconds</b> after guests leave dishes behind. The real default is 3 minutes. A set table with clean glasses and no guests stays green. <b>Tap a red table</b> to mark it cleared.</p>
+    <p><b>This is a demo copy of the host-stand screen.</b> It runs in your browser with the same rules as the real app. There's no camera: a simulated dinner service plays on its own, or you can play the camera for any table with the buttons below.</p>
+    <p>Timers are sped up: a table turns <b>red</b> 20 seconds after guests leave dishes behind (real app: 3 min), and <b>orange "WAITING"</b> after 30 seconds with nothing served (real app: 10 min). <b>Tap a red or orange table</b> to say it's been handled. Tap <b>Sound off</b> to hear the chime.</p>
   </div>
 
   <div class="screen">
     <header>
       <h1>Tables</h1>
-      <div class="counts">
-        <span class="pill red"><b id="n-red">0</b> clear</span>
-        <span class="pill gray"><b id="n-gray">0</b> seated</span>
-        <span class="pill green"><b id="n-green">0</b> free</span>
+      <div class="fill">
+        <div class="fill-text"><b id="f-tables">0 / 0</b> tables · <b id="f-seats">0 / 0</b> seats</div>
+        <div class="fill-bar"><div id="f-bar"></div></div>
       </div>
+      <div class="tonight" id="tonight"></div>
+      <button id="sound" class="sound" type="button">Sound off</button>
       <span class="live">Live</span>
     </header>
+    <div id="banner" class="banner" hidden></div>
     <div id="floor"></div>
+  </div>
+
+  <div class="legend" aria-label="Legend">
+    <span style="--c: var(--clear)">Red: clear it (banner + chime)</span>
+    <span style="--c: var(--attention)">Orange: nothing served yet (banner + chime)</span>
+    <span style="--c: var(--occupied)">Gray: seated, served, plates gone</span>
+    <span style="--c: var(--left)">Dark gray: guests just left</span>
+    <span style="--c: var(--free)">Green: free, with empty time after a turn</span>
+    <span style="--c: var(--hint)">Tags: check? and long stay (silent)</span>
   </div>
 
   <section class="cam">
     <h2>Pretend camera</h2>
-    <p class="hint">Pick a table, then tell the system what the camera sees there.</p>
+    <p class="hinttext">Pick a table, then tell the system what the camera sees. A table you control stops auto-playing (outlined in yellow).</p>
     <div class="row"><span class="lbl">Table</span><div class="row" id="picker"></div></div>
     <div class="row"><span class="lbl">Camera sees</span>
-      <button class="act" id="b-sit" type="button">Guests sitting, with dishes</button>
-      <button class="act" id="b-leave" type="button">Guests left, dishes still there</button>
-      <button class="act" id="b-bus" type="button">Empty and clean</button>
+      <button class="act" id="b-sit" type="button">Guests sit down</button>
+      <button class="act" id="b-serve" type="button">Drinks or food arrive</button>
+      <button class="act" id="b-plates" type="button">Plates taken away</button>
+      <button class="act" id="b-leave" type="button">Guests leave, dishes stay</button>
+      <button class="act" id="b-bus" type="button">Busser clears it</button>
+      <button class="act" id="b-set" type="button">Table re-set (clean glasses)</button>
     </div>
-    <div class="row"><label class="toggle"><input type="checkbox" id="auto" checked> Auto-play a busy night (random guests come and go)</label></div>
+    <div class="row"><label class="toggle"><input type="checkbox" id="auto" checked> Auto-play a busy night</label></div>
     <pre class="log" id="log"></pre>
   </section>
 </div>
 
 <script>
-// Same floor and same state rules as backend/state.py, running in the browser.
-const CLEAR_AFTER = 20; // seconds (real app: 3 minutes)
+// ---- Same rules as backend/state.py, with demo timers (seconds) ----
+const CFG = { clearAfter: 20, notServed: 30, platesGone: 5, checkHint: 20, longStay: 100, minVisit: 15 };
+const SERVED_DELTA = 2, SET = 3;
 const FLOOR = [
   ["T1","1",14,18,"round",2],["T2","2",38,18,"round",2],["T3","3",62,18,"square",4],["T4","4",86,18,"square",4],
   ["T5","5",14,50,"square",4],["T6","6",44,50,"rect",6],["T7","7",80,50,"rect",8],
   ["T8","8",14,82,"round",2],["T9","9",38,82,"square",4],["T10","10",62,82,"square",4],["T11","11",86,82,"round",2],
 ].map(([id,name,x,y,shape,seats]) => ({id,name,x,y,shape,seats}));
-const LABELS = { FREE: "FREE", OCCUPIED: "SEATED", NEEDS_CLEARING: "CLEAR" };
+const LABELS = { FREE: "FREE", SEATED: "SEATED", SERVED: "SERVED", FINISHING: "PLATES GONE", LEFT: "GUESTS LEFT", CLEAR: "CLEAR" };
 const now = () => Date.now() / 1000;
-const tables = {}, tiles = {};
+const tables = {}, tiles = {}, visits = [];
 let picked = "T1";
 
-function observe(t, people, dishes) {
-  if (people) { t.state = "OCCUPIED"; t.since = null; }
-  else if (dishes) { if (t.since == null && t.state === "OCCUPIED") t.since = now(); } // set tables stay free
-  else { t.state = "FREE"; t.since = null; }
+const VISIT = () => ({ seated_at: null, served_at: null, baseline: null, peak: null, plates_gone_since: null, empty_before: null });
+function newTable(t) { return { ...t, state: "FREE", unattended_since: null, free_since: null, dish_count: SET, ...VISIT() }; }
+
+function observe(t, people, dishes, count) {
+  const before = { ...t };
+  t.dish_count = count;
+  if (people) {
+    if (t.state !== "OCCUPIED") {
+      const empty = t.free_since != null ? now() - t.free_since : null;
+      Object.assign(t, VISIT(), { seated_at: now(), empty_before: empty, free_since: null });
+    }
+    t.state = "OCCUPIED"; t.unattended_since = null;
+    trackMeal(t);
+  } else if (dishes) {
+    if (t.unattended_since == null && t.state === "OCCUPIED") t.unattended_since = now();
+  } else toFree(t);
   tick(t);
+  recordVisit(before, t);
+}
+function trackMeal(t) {
+  const c = t.dish_count;
+  if (t.baseline == null) t.baseline = t.peak = c;
+  if (t.served_at == null && Math.abs(c - t.baseline) >= SERVED_DELTA) t.served_at = now();
+  t.peak = Math.max(t.peak, c);
+  const gone = t.served_at != null && c <= t.baseline && t.peak - c >= SERVED_DELTA;
+  t.plates_gone_since = gone ? (t.plates_gone_since ?? now()) : null;
+}
+function toFree(t) {
+  if (t.state !== "FREE") t.free_since = now();
+  t.state = "FREE"; t.unattended_since = null;
+  Object.assign(t, VISIT());
 }
 function tick(t) {
-  if (t.state !== "NEEDS_CLEARING" && t.since != null && now() - t.since >= CLEAR_AFTER) {
-    t.state = "NEEDS_CLEARING"; log(`Table ${t.name}: dishes unattended ${CLEAR_AFTER}s → needs clearing`);
+  if (t.state !== "NEEDS_CLEARING" && t.unattended_since != null && now() - t.unattended_since >= CFG.clearAfter) {
+    t.state = "NEEDS_CLEARING"; log(`Table ${t.name}: dishes left ${CFG.clearAfter}s with nobody there → clear it`);
   }
 }
+function recordVisit(old, t) {
+  if (old.seated_at == null || t.seated_at === old.seated_at) return;
+  const left = old.unattended_since ?? now();
+  if (left - old.seated_at < CFG.minVisit) return;
+  visits.push({ stay: left - old.seated_at, first: old.served_at != null ? old.served_at - old.seated_at : null, empty: old.empty_before });
+}
+function longStayAfter() {
+  if (visits.length < 5) return CFG.longStay;
+  const s = visits.map(v => v.stay).sort((a, b) => a - b);
+  return 1.5 * s[Math.floor(s.length / 2)];
+}
+function view(t) {
+  const n = now();
+  let stage = "FREE", alert = null; const hints = [];
+  if (t.state === "NEEDS_CLEARING") { stage = "CLEAR"; alert = "clear"; }
+  else if (t.state === "OCCUPIED" && t.unattended_since != null) stage = "LEFT";
+  else if (t.state === "OCCUPIED") {
+    if (t.served_at == null) { stage = "SEATED"; if (n - t.seated_at >= CFG.notServed) alert = "not_served"; }
+    else if (t.plates_gone_since != null && n - t.plates_gone_since >= CFG.platesGone) {
+      stage = "FINISHING"; if (n - t.plates_gone_since >= CFG.checkHint) hints.push("check?");
+    } else stage = "SERVED";
+    if (n - t.seated_at >= longStayAfter()) hints.push("long stay");
+  }
+  return { stage, alert, hints };
+}
 
+// ---- Screen ----
 const logEl = document.getElementById("log");
 function log(msg) {
-  const ts = new Date().toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"});
-  logEl.textContent = `${ts}  ${msg}\n` + logEl.textContent.split("\n").slice(0, 30).join("\n");
+  const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  logEl.textContent = `${ts}  ${msg}\n` + logEl.textContent.split("\n").slice(0, 40).join("\n");
 }
+const clock = s => { s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+const secs = s => `${Math.max(0, Math.floor(s))}s`;
 
 function build() {
   const floor = document.getElementById("floor"), picker = document.getElementById("picker");
-  for (const t of FLOOR) {
-    tables[t.id] = { ...t, state: "FREE", since: null };
+  for (const f of FLOOR) {
+    tables[f.id] = newTable(f);
     const el = document.createElement("button");
-    el.type = "button";
-    el.className = `table ${t.shape}`;
-    const base = t.seats <= 2 ? 13 : 15, wide = t.shape === "rect" ? Math.max(1.4, t.seats / 4) : 1;
-    Object.assign(el.style, { left: t.x + "%", top: t.y + "%", width: `calc(${base * wide}% * 10 / 16)`, aspectRatio: wide });
-    el.innerHTML = '<span class="name"></span><span class="label"></span><span class="timer"></span>';
-    el.querySelector(".name").textContent = t.name;
-    el.addEventListener("click", () => {
-      const tb = tables[t.id];
-      if (tb.state === "NEEDS_CLEARING") { tb.state = "FREE"; tb.since = null; log(`Table ${t.name}: marked cleared by host`); render(); }
-      else pick(t.id);
-    });
-    floor.appendChild(el); tiles[t.id] = el;
+    el.type = "button"; el.className = `table ${f.shape}`;
+    const base = f.seats <= 2 ? 13 : 15, wide = f.shape === "rect" ? Math.max(1.4, f.seats / 4) : 1;
+    Object.assign(el.style, { left: f.x + "%", top: f.y + "%", width: `calc(${base * wide}% * 10 / 16)`, aspectRatio: wide });
+    el.innerHTML = '<span class="name"></span><span class="label"></span><span class="timer"></span><span class="hints"></span>';
+    el.querySelector(".name").textContent = f.name;
+    el.addEventListener("click", () => onTap(f.id));
+    floor.appendChild(el); tiles[f.id] = el;
     const chip = document.createElement("button");
-    chip.type = "button"; chip.className = "chip"; chip.textContent = t.name; chip.dataset.id = t.id;
-    chip.addEventListener("click", () => pick(t.id));
+    chip.type = "button"; chip.className = "chip"; chip.textContent = f.name; chip.dataset.id = f.id;
+    chip.addEventListener("click", () => pick(f.id));
     picker.appendChild(chip);
   }
 }
@@ -150,53 +233,136 @@ function pick(id) {
   document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.id === id));
   render();
 }
+function onTap(id) {
+  const t = tables[id], v = view(t);
+  if (v.stage === "CLEAR") { const b = { ...t }; toFree(t); recordVisit(b, t); log(`Table ${t.name}: host marked it cleared`); }
+  else if (v.alert === "not_served") { t.served_at = now(); log(`Table ${t.name}: host confirmed someone has been there`); }
+  else { pick(id); return; }
+  render();
+}
 
+const alerted = new Set();
 function render() {
-  const n = { FREE: 0, OCCUPIED: 0, NEEDS_CLEARING: 0 };
+  const n = now();
+  let inUse = 0, seats = 0, totalSeats = 0;
+  const items = []; let anyClear = false, fresh = false; const live = new Set();
   for (const id in tables) {
-    const t = tables[id], el = tiles[id];
-    n[t.state]++;
-    el.classList.remove("FREE", "OCCUPIED", "NEEDS_CLEARING"); el.classList.add(t.state);
-    el.classList.toggle("picked", id === picked);
-    el.querySelector(".label").textContent = LABELS[t.state];
+    const t = tables[id], el = tiles[id], v = view(t);
+    totalSeats += t.seats;
+    if (t.state === "OCCUPIED" && t.unattended_since == null) { inUse++; seats += t.seats; }
+    el.className = `table ${t.shape} ${v.stage}` + (v.alert === "not_served" ? " not_served" : "") + (id === picked ? " picked" : "");
+    el.querySelector(".label").textContent = v.alert === "not_served" ? "WAITING" : LABELS[v.stage];
     let timer = "";
-    if (t.state === "NEEDS_CLEARING") { const s = Math.floor(now() - t.since); timer = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+    if (v.stage === "CLEAR") timer = clock(n - t.unattended_since);
+    else if (v.stage === "LEFT") timer = `left ${clock(n - t.unattended_since)}`;
+    else if (v.stage === "SEATED" || v.stage === "SERVED") timer = secs(n - t.seated_at);
+    else if (v.stage === "FINISHING") timer = secs(n - t.plates_gone_since);
+    else if (v.stage === "FREE" && t.free_since != null && n - t.free_since >= 5) timer = `empty ${secs(n - t.free_since)}`;
     el.querySelector(".timer").textContent = timer;
-    el.setAttribute("aria-label", `Table ${t.name}, ${LABELS[t.state]}${timer ? ", unattended " + timer : ""}`);
+    const h = el.querySelector(".hints"); h.innerHTML = "";
+    v.hints.forEach(x => { const s = document.createElement("span"); s.className = "hint"; s.textContent = x; h.appendChild(s); });
+    el.setAttribute("aria-label", `Table ${t.name}, ${el.querySelector(".label").textContent} ${timer} ${v.hints.join(" ")}`);
+    if (v.alert) {
+      const key = id + v.alert; live.add(key);
+      if (!alerted.has(key)) { alerted.add(key); fresh = true; }
+      if (v.alert === "clear") { anyClear = true; items.push(`Table ${t.name}: clear it (${clock(n - t.unattended_since)})`); }
+      else items.push(`Table ${t.name}: nothing served for ${secs(n - t.seated_at)}`);
+    }
   }
-  document.getElementById("n-red").textContent = n.NEEDS_CLEARING;
-  document.getElementById("n-gray").textContent = n.OCCUPIED;
-  document.getElementById("n-green").textContent = n.FREE;
+  for (const k of [...alerted]) if (!live.has(k)) alerted.delete(k);
+  if (fresh) chime();
+  const b = document.getElementById("banner");
+  b.hidden = !items.length; b.classList.toggle("only-attention", !anyClear); b.innerHTML = "";
+  items.forEach(x => { const s = document.createElement("span"); s.textContent = x; b.appendChild(s); });
+  document.getElementById("f-tables").textContent = `${inUse} / ${FLOOR.length}`;
+  document.getElementById("f-seats").textContent = `${seats} / ${totalSeats}`;
+  document.getElementById("f-bar").style.width = `${(100 * inUse) / FLOOR.length}%`;
+  const avg = xs => { xs = xs.filter(x => x != null); return xs.length ? xs.reduce((a, c) => a + c, 0) / xs.length : null; };
+  const first = avg(visits.map(v => v.first)), empty = avg(visits.map(v => v.empty)), parts = [];
+  if (first != null) parts.push(`First service ~${Math.round(first)}s`);
+  if (empty != null) parts.push(`Empty between parties ~${Math.round(empty)}s`);
+  document.getElementById("tonight").textContent = parts.length ? `Tonight: ${parts.join(" · ")}` : "Tonight: averages appear after the first parties leave";
 }
 
-function camera(people, dishes, what) {
-  const t = tables[picked]; observe(t, people, dishes); log(`Camera, table ${t.name}: ${what}`); render();
+// ---- Sound: one soft chime per new alert, after the viewer turns it on ----
+let audio = null;
+function chime() {
+  if (!audio) return;
+  const t0 = audio.currentTime;
+  [[880, 0], [660, 0.18]].forEach(([f, at]) => {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0 + at);
+    g.gain.exponentialRampToValueAtTime(0.25, t0 + at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.5);
+    o.connect(g).connect(audio.destination); o.start(t0 + at); o.stop(t0 + at + 0.55);
+  });
 }
-document.getElementById("b-sit").onclick = () => camera(true, true, "guests sitting");
-document.getElementById("b-leave").onclick = () => camera(false, true, "guests left, dishes remain");
-document.getElementById("b-bus").onclick = () => camera(false, false, "empty and clean");
+document.getElementById("sound").addEventListener("click", () => {
+  const btn = document.getElementById("sound");
+  if (audio) { audio.close(); audio = null; }
+  else { try { audio = new (window.AudioContext || window.webkitAudioContext)(); chime(); } catch (e) { audio = null; } }
+  btn.textContent = audio ? "Sound on" : "Sound off"; btn.classList.toggle("on", !!audio);
+});
 
-// Auto-play: random guests arrive and leave; bussers usually clear quickly, sometimes nobody does.
+// ---- Pretend camera (manual) ----
+const manual = new Set();
+function camera(fn, what) {
+  const t = tables[picked];
+  manual.add(picked);
+  document.querySelector(`.chip[data-id="${picked}"]`).classList.add("manual");
+  fn(t); log(`Camera, table ${t.name}: ${what}`); render();
+}
+const base = t => (t.baseline ?? SET);
+document.getElementById("b-sit").onclick = () => camera(t => observe(t, true, true, t.dish_count || SET), "guests sat down");
+document.getElementById("b-serve").onclick = () => camera(t => observe(t, true, true, (t.dish_count || SET) + 2), "drinks or food arrived");
+document.getElementById("b-plates").onclick = () => camera(t => observe(t, true, true, base(t)), "plates taken away, guests still there");
+document.getElementById("b-leave").onclick = () => camera(t => observe(t, false, true, t.dish_count || SET), "guests left, dishes stay");
+document.getElementById("b-bus").onclick = () => camera(t => observe(t, false, false, 0), "busser cleared it");
+document.getElementById("b-set").onclick = () => camera(t => observe(t, false, true, SET), "table re-set with clean glasses");
+
+// ---- Auto-play: a dinner service, same shape as simulator.py ----
+function meal() {
+  const r = (a, b) => a + Math.random() * (b - a);
+  const forgotten = Math.random() < 0.15, long = Math.random() < 0.1, neglected = Math.random() < 0.35;
+  return [
+    ["table set", false, true, SET, r(5, 20)],
+    ["guests sat down", true, true, SET, forgotten ? r(40, 50) : r(5, 15)],
+    ["drinks arrived", true, true, SET + 2, r(5, 10)],
+    ["food served", true, true, SET + 5, long ? r(110, 130) : r(25, 50)],
+    ["plates cleared, still sitting", true, true, SET, r(5, 30)],
+    ["guests left, dishes remain", false, true, SET, neglected ? r(30, 45) : r(4, 10)],
+    ["busser cleared it", false, false, 0, r(4, 12)],
+  ];
+}
 const plan = {};
 function autoStep() {
   if (!document.getElementById("auto").checked) return;
-  const t0 = now();
+  const n = now();
   for (const id in tables) {
-    const t = tables[id], p = plan[id] || (plan[id] = { next: t0 + Math.random() * 8 });
-    if (t0 < p.next) continue;
-    if (t.state === "FREE" && t.since == null) { observe(t, true, true); log(`Camera, table ${t.name}: guests sat down`); p.next = t0 + 15 + Math.random() * 30; }
-    else if (t.state === "OCCUPIED" && t.since == null) {
-      observe(t, false, true); log(`Camera, table ${t.name}: guests left, dishes remain`);
-      p.neglect = Math.random() < 0.4; p.next = t0 + (p.neglect ? 60 + Math.random() * 40 : 4 + Math.random() * 8);
-    } else if (t.since != null) { observe(t, false, false); log(`Camera, table ${t.name}: busser cleared it`); p.next = t0 + 5 + Math.random() * 15; }
-    else p.next = t0 + 5;
+    if (manual.has(id)) continue;
+    const p = plan[id];
+    if (n < p.until) continue;
+    if (!p.steps.length) p.steps = meal();
+    const [label, people, dishes, count, dur] = p.steps.shift();
+    p.until = n + dur;
+    observe(tables[id], people, dishes, count);
+    log(`Camera, table ${tables[id].name}: ${label}`);
   }
 }
 
 build();
-// Start mid-service so the screen isn't empty.
-["T2","T3","T5","T7","T9","T11"].forEach(id => observe(tables[id], true, true));
-tables.T10.since = now() - CLEAR_AFTER - 41; tick(tables.T10);
+// Start mid-service so the screen isn't empty. Parties already eating were
+// seated a while ago at a set table, so they show as served, with time on the clock.
+for (const id in tables) {
+  const steps = meal(), start = Math.floor(Math.random() * 4);
+  if (start >= 2) {
+    const t = tables[id], ago = 10 + Math.random() * 30;
+    Object.assign(t, { state: "OCCUPIED", seated_at: now() - ago, served_at: now() - ago + 5, baseline: SET, peak: SET, dish_count: SET });
+  }
+  plan[id] = { steps: steps.slice(start), until: 0 };
+}
 pick("T1");
+render();
 setInterval(() => { for (const id in tables) tick(tables[id]); autoStep(); render(); }, 1000);
 </script>

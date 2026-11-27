@@ -46,7 +46,7 @@ Settings (environment variables, in minutes; on the mini PC, put them in `deploy
 
 Also: `PORT` (8000), `TABLEWATCH_DB` (`tablewatch.db`; demo mode uses `demo.db`), `TABLEWATCH_FLOOR` (`config/floor.json`).
 
-`docs/demo.html` is a standalone copy of the original, simpler dashboard that runs in any browser with no server, for showing the idea. It doesn't have the meal stages yet.
+`docs/demo.html` is a standalone copy of the dashboard that runs in any browser with no server, for showing the idea. It plays a sped-up dinner service and has a "pretend camera" panel for walking one table through a meal.
 
 ### Open it on an iPad (same Wi-Fi)
 
