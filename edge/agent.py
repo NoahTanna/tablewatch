@@ -12,15 +12,19 @@ import argparse
 import csv
 import json
 import logging
+import statistics
 import threading
 import time
 import urllib.request
+from collections import defaultdict, deque
 
 import cv2
 
 from edge.debounce import Debouncer
 from edge.detector import Detector
-from edge.zones import load_zones, observe_tables
+from edge.zones import count_dishes, load_zones, observe_tables
+
+COUNT_WINDOW = 5  # dish counts are noisy (arms hide plates): send the median of the last 5
 
 log = logging.getLogger("edge")
 
@@ -85,8 +89,9 @@ def live_frames(url, every):
         time.sleep(max(0.0, every - (time.time() - start)))
 
 
-def post(backend, table_id, people, dishes):
-    body = json.dumps({"table_id": table_id, "people": people, "dishes": dishes}).encode()
+def post(backend, table_id, people, dishes, dish_count=None):
+    body = json.dumps({"table_id": table_id, "people": people, "dishes": dishes,
+                       "dish_count": dish_count}).encode()
     req = urllib.request.Request(backend + "/api/events", data=body,
                                  headers={"Content-Type": "application/json"})
     urllib.request.urlopen(req, timeout=5).read()
@@ -115,33 +120,42 @@ def main(argv=None):
     frames = live_frames(args.source, args.every) if live else video_frames(args.source, args.every)
     out = csv.writer(open(args.log, "w", newline="")) if args.log else None
     if out:
-        out.writerow(["time_s", "table_id", "people", "dishes"])
+        out.writerow(["time_s", "table_id", "people", "dishes", "dish_count"])
     last_sync = 0.0
+    recent = defaultdict(lambda: deque(maxlen=COUNT_WINDOW))  # table -> last raw dish counts
+    sent_count = {}  # table -> smoothed count last sent
 
-    def send(tid, people, dishes):
+    def send(tid, people, dishes, count):
         if args.dry_run:
             return
         try:
-            post(args.backend, tid, people, dishes)
+            post(args.backend, tid, people, dishes, count)
         except Exception as e:  # backend down: the next resync will catch it up
             log.warning("could not reach backend: %s", e)
 
     log.info("watching %d tables from %s", len(zones), "camera" if live else args.source)
     for t, frame in frames:
-        observations = observe_tables(detector.detect_tables(frame, zones), zones)
+        detections = detector.detect_tables(frame, zones)
         del frame  # never kept
+        observations = observe_tables(detections, zones)
+        for tid, n in count_dishes(detections, zones).items():
+            recent[tid].append(n)
         for tid, (people, dishes) in observations.items():
             changed = debouncer.update(tid, people, dishes)
+            count = int(statistics.median(recent[tid]))
+            if changed is None and tid in debouncer.known() and count != sent_count.get(tid):
+                changed = debouncer.current(tid)  # only the dish count moved
             if changed is not None:
+                sent_count[tid] = count
                 when = time.strftime("%H:%M:%S", time.localtime(t)) if live else f"t={t:.0f}s"
-                log.info("%s %s people=%s dishes=%s", when, tid, *changed)
+                log.info("%s %s people=%s dishes=%s count=%s", when, tid, *changed, count)
                 if out:
-                    out.writerow([round(t, 1), tid, int(changed[0]), int(changed[1])])
-                send(tid, *changed)
+                    out.writerow([round(t, 1), tid, int(changed[0]), int(changed[1]), count])
+                send(tid, *changed, count)
         if live and time.time() - last_sync >= args.resync:
             last_sync = time.time()
             for tid in debouncer.known():
-                send(tid, *debouncer.current(tid))
+                send(tid, *debouncer.current(tid), sent_count.get(tid))
 
 
 if __name__ == "__main__":

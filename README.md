@@ -1,21 +1,34 @@
 # TableWatch
 
-Shows live table status on an iPad at the host stand: **green = FREE**, **gray = SEATED**, **red = NEEDS CLEARING**.
-Red means guests were seated, then left, and dishes have sat there with nobody at the table for N minutes (default 3). A freshly set table with clean glasses stays green. Tap a red table once it has been cleared.
+A live floor map on an iPad at the host stand, driven by the dining-room camera. It is **quiet by design**: only two things raise a banner and a soft chime, because those are the two things staff can act on right now.
+
+| Tile | Meaning | Sound? |
+|---|---|---|
+| **Red, CLEAR + timer** | Guests left dishes behind and nobody has been to the table for 3 min. Tap it once it's cleared. | Banner + chime |
+| **Orange, WAITING** | Guests sat down and nothing has arrived or been taken away for 10 min. Tap it once someone has been there. | Banner + chime |
+| Gray, SEATED / SERVED / PLATES GONE | Meal stage, with minutes since they sat | Silent |
+| Dark gray, GUESTS LEFT | Guests are gone, dishes still there (turns red after 3 min) | Silent |
+| Green, FREE | Ready to seat. After a turn it shows "empty 6 min" | Silent |
+| *check?* chip | Plates gone for 10 min, guests still sitting: maybe waiting for the check (a hint; the camera is weakest here) | Silent |
+| *long stay* chip | Seated much longer than tonight's typical party (90 min until there's enough data) | Silent |
+
+The header shows how full the room is (tables and seats) and tonight's averages: time from sitting down to first service, and empty time between parties. A freshly set table with clean glasses stays green. There are no per-server numbers. Why these features: see [docs/research.md](docs/research.md).
 
 ```
 IP camera --RTSP--> edge agent (mini PC) --people/dishes per table--> backend --live updates--> iPad dashboard
 ```
 
-The edge agent sends only `table_id` + two yes/no values. No video, images or audio leave it or get stored.
+The edge agent sends only `table_id`, two yes/no values (people, dishes) and a dish count. No video, images or audio leave it or get stored.
+
+To hear the chime, tap **Sound off** once at the start of each shift. iPad Safari only plays sound after a tap.
 
 ## 1. Try it without a camera
 
 Requires Python 3.10+.
 
 ```bash
-./dev.sh demo   # backend + dashboard + simulated tables, N = 30 s so red tables show up quickly
-./dev.sh        # backend + dashboard only, N = 3 min
+./dev.sh demo   # backend + dashboard + a simulated dinner service, every timer shortened to seconds
+./dev.sh        # backend + dashboard only, real timers
 ```
 
 Open http://localhost:8000. Tests: `.venv/bin/pytest -q`
@@ -108,10 +121,11 @@ One agent watches one camera. For a second camera, run a second agent with its o
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/api/events` | Edge report: `{"table_id": "T1", "people": false, "dishes": true}` |
-| GET  | `/api/tables` | Current state of all tables, plus when the camera last reported |
+| POST | `/api/events` | Edge report: `{"table_id": "T1", "people": false, "dishes": true, "dish_count": 4}` (count optional) |
+| GET  | `/api/tables` | Every table with its stage, alert and hints, the room summary, and when the camera last reported |
 | GET  | `/api/stream` | Server-Sent Events: one message for each table change |
 | POST | `/api/tables/{id}/clear` | Staff marked the table cleared, so it becomes FREE |
+| POST | `/api/tables/{id}/served` | Staff confirmed someone has been to a WAITING table |
 | GET  | `/api/floor` | Floor layout |
 
 ## Layout

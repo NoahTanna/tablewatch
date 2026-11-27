@@ -13,13 +13,15 @@
 <body>
   <header>
     <h1>Tables</h1>
-    <div class="counts">
-      <span class="pill red"><b id="n-red">0</b> clear</span>
-      <span class="pill gray"><b id="n-gray">0</b> seated</span>
-      <span class="pill green"><b id="n-green">0</b> free</span>
+    <div class="fill" aria-label="Room fullness">
+      <div class="fill-text"><b id="f-tables">0 / 0</b> tables · <b id="f-seats">0 / 0</b> seats</div>
+      <div class="fill-bar"><div id="f-bar"></div></div>
     </div>
+    <div class="tonight" id="tonight"></div>
+    <button id="sound" class="sound" type="button">Sound off</button>
     <div id="conn" class="conn">Connecting…</div>
   </header>
+  <div id="banner" class="banner" hidden></div>
   <main id="floor"></main>
   <div id="offline" class="offline" hidden>Connection lost. Reconnecting… (statuses may be out of date)</div>
   <div id="nocam" class="offline" hidden></div>

@@ -5,6 +5,8 @@
   --muted: #9aa0a6;
   --free: #1f9d55;
   --occupied: #5f6670;
+  --left: #474d55;
+  --attention: #e37400;
   --clear: #d93025;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -14,33 +16,49 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 body { display: flex; flex-direction: column;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 
-header { display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: var(--panel); }
+header { display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: var(--panel); flex-wrap: wrap; }
 h1 { margin: 0; font-size: 28px; font-weight: 700; }
-.counts { display: flex; gap: 12px; flex: 1; }
-.pill { padding: 6px 16px; border-radius: 999px; font-size: 20px; }
-.pill b { font-size: 24px; margin-right: 4px; }
-.pill.red { background: var(--clear); }
-.pill.gray { background: var(--occupied); }
-.pill.green { background: var(--free); }
+.fill { display: flex; flex-direction: column; gap: 6px; min-width: 240px; }
+.fill-text { font-size: 20px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fill-text b { color: var(--text); }
+.fill-bar { height: 8px; border-radius: 4px; background: #2c3036; overflow: hidden; }
+.fill-bar div { height: 100%; width: 0; background: var(--occupied); transition: width 0.5s; }
+.tonight { flex: 1; font-size: 16px; color: var(--muted); line-height: 1.4; }
+.sound { font: inherit; font-size: 16px; color: var(--muted); background: transparent; border: 1px solid #3a3f46;
+  border-radius: 999px; padding: 8px 16px; min-height: 44px; }
+.sound.on { color: var(--text); border-color: var(--muted); }
 .conn { font-size: 16px; color: var(--muted); }
 .conn.ok::before { content: "● "; color: var(--free); }
+
+.banner { display: flex; flex-wrap: wrap; gap: 8px 24px; padding: 10px 24px; font-size: 22px; font-weight: 700;
+  background: var(--clear); color: #fff; }
+.banner.only-attention { background: var(--attention); }
 
 main { position: relative; flex: 1; margin: 16px; }
 
 .table { position: absolute; transform: translate(-50%, -50%);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
   border-radius: 16px; border: 4px solid rgba(255,255,255,0.15);
-  background: var(--free); color: #fff; cursor: default; transition: background 0.3s; text-align: center; }
+  background: var(--free); color: #fff; cursor: default; transition: background 0.3s; }
 .table.round { border-radius: 50%; }
 .table .name { font-size: clamp(28px, 6vmin, 64px); font-weight: 800; line-height: 1; }
-.table .label { font-size: clamp(14px, 2.2vmin, 22px); font-weight: 600; margin-top: 4px; letter-spacing: 0.04em; }
-.table .timer { font-size: clamp(18px, 3vmin, 30px); font-weight: 700; font-variant-numeric: tabular-nums; }
+.table .label { font-size: clamp(13px, 2vmin, 20px); font-weight: 600; margin-top: 4px; letter-spacing: 0.04em; }
+.table .timer { font-size: clamp(15px, 2.6vmin, 26px); font-weight: 700; font-variant-numeric: tabular-nums; min-height: 1.2em; }
+.table .hints { position: absolute; bottom: -14px; display: flex; gap: 4px; }
+.table .hint { font-size: clamp(11px, 1.6vmin, 15px); font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: var(--bg); color: #f6c76b; border: 1px solid #f6c76b; white-space: nowrap; }
+
 .table.FREE { background: var(--free); }
-.table.OCCUPIED { background: var(--occupied); }
-.table.NEEDS_CLEARING { background: var(--clear); cursor: pointer; border-color: #fff;
+.table.SEATED, .table.SERVED, .table.FINISHING { background: var(--occupied); }
+.table.LEFT { background: var(--left); }
+.table.FREE .timer, .table.SEATED .timer, .table.SERVED .timer, .table.FINISHING .timer, .table.LEFT .timer {
+  font-weight: 500; opacity: 0.85; }
+.table.not_served { background: var(--attention); cursor: pointer; border-color: #fff; }
+.table.CLEAR { background: var(--clear); cursor: pointer; border-color: #fff;
   animation: pulse 1.6s ease-in-out infinite; }
-.table.NEEDS_CLEARING:active { filter: brightness(0.8); }
+.table.CLEAR:active, .table.not_served:active { filter: brightness(0.8); }
 @keyframes pulse { 50% { box-shadow: 0 0 0 10px rgba(217,48,37,0.35); } }
+@media (prefers-reduced-motion: reduce) { .table.CLEAR { animation: none; } }
 
 .offline { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px; text-align: center;
   font-size: 22px; font-weight: 700; background: #f9ab00; color: #000; }

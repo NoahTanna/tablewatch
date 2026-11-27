@@ -55,3 +55,16 @@ def observe_tables(detections, zones):
                 if inside(center, poly):
                     obs[tid][1] = True
     return {tid: tuple(v) for tid, v in obs.items()}
+
+
+def count_dishes(detections, zones):
+    """-> {table_id: number of dishes whose center is in the zone}."""
+    counts = {tid: 0 for tid in zones}
+    for kind, _score, (x1, y1, x2, y2) in detections:
+        if kind != "dish":
+            continue
+        center = ((x1 + x2) / 2, (y1 + y2) / 2)
+        for tid, poly in zones.items():
+            if inside(center, poly):
+                counts[tid] += 1
+    return counts

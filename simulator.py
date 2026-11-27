@@ -1,10 +1,13 @@
-"""Fake edge agent: cycles tables through realistic states so you can demo without a camera.
+"""Fake edge agent: plays a dinner service so you can demo without a camera.
 
-Each table loops:  empty -> guests seated -> guests leave (dishes left behind)
-  -> usually a busser clears it quickly, sometimes nobody does and it turns red
-  -> red tables wait for a tap on the dashboard (or get cleared eventually)
+Each table loops through a realistic meal, reporting what a camera would see
+(people? dishes? how many dishes?):
+  set table (glasses, cutlery) -> guests sit -> drinks/food arrive -> plates cleared
+  -> guests leave -> usually bussed quickly, sometimes nobody comes and it turns red
+Now and then a party is forgotten (nothing arrives) or stays very long.
 
 Stdlib only. Usage: python simulator.py [--url http://localhost:8000] [--scale 1.0]
+Durations suit ./dev.sh demo (short thresholds). --scale 2 makes everything slower.
 """
 import argparse
 import json
@@ -12,27 +15,28 @@ import random
 import time
 import urllib.request
 
+SET = 3  # glasses and cutlery on a set table
 
-def post(url, table_id, people, dishes):
-    body = json.dumps({"table_id": table_id, "people": people, "dishes": dishes}).encode()
-    req = urllib.request.Request(url + "/api/events", data=body,
-                                 headers={"Content-Type": "application/json"})
+
+def post(url, table_id, people, dishes, count):
+    body = json.dumps({"table_id": table_id, "people": people, "dishes": dishes, "dish_count": count}).encode()
+    req = urllib.request.Request(url + "/api/events", data=body, headers={"Content-Type": "application/json"})
     urllib.request.urlopen(req, timeout=5).read()
 
 
-# (phase name, people, dishes, (min seconds, max seconds)) at scale 1.0
-SEATED = ("seated", True, True, (20, 60))
-LEFT_CLEARED_SOON = ("left, busser coming", False, True, (5, 15))
-LEFT_NEGLECTED = ("left, nobody clearing", False, True, (60, 120))
-EMPTY = ("empty", False, False, (5, 25))
-
-
-def next_phase(phase):
-    if phase is EMPTY:
-        return SEATED
-    if phase is SEATED:
-        return LEFT_NEGLECTED if random.random() < 0.4 else LEFT_CLEARED_SOON
-    return EMPTY
+def meal():
+    """One party's visit as a list of (label, people, dishes, count, seconds)."""
+    forgotten = random.random() < 0.15
+    long_stay = random.random() < 0.1
+    steps = [("set table", False, True, SET, random.uniform(5, 30)),
+             ("guests sat down", True, True, SET, random.uniform(70, 90) if forgotten else random.uniform(8, 25))]
+    steps.append(("drinks arrived", True, True, SET + 2, random.uniform(8, 15)))
+    steps.append(("food served", True, True, SET + 5, random.uniform(140, 180) if long_stay else random.uniform(30, 70)))
+    steps.append(("plates cleared, still sitting", True, True, SET, random.uniform(10, 45)))
+    neglected = random.random() < 0.35
+    steps.append(("guests left, dishes remain", False, True, SET, random.uniform(45, 70) if neglected else random.uniform(5, 15)))
+    steps.append(("bussed, table bare", False, False, 0, random.uniform(5, 20)))
+    return steps
 
 
 def main():
@@ -44,8 +48,9 @@ def main():
     floor = json.load(urllib.request.urlopen(args.url + "/api/floor"))
     tables = {}
     for t in floor["tables"]:
-        phase = random.choice([EMPTY, SEATED, SEATED])
-        tables[t["id"]] = {"phase": phase, "until": 0}
+        steps = meal()
+        start = random.randrange(len(steps) - 2)  # start mid-service
+        tables[t["id"]] = {"steps": steps[start:], "until": 0}
 
     print(f"Simulating {len(tables)} tables against {args.url} (Ctrl+C to stop)")
     while True:
@@ -53,13 +58,13 @@ def main():
         for tid, s in tables.items():
             if now < s["until"]:
                 continue
-            if s["until"]:  # not the first round
-                s["phase"] = next_phase(s["phase"])
-            name, people, dishes, (lo, hi) = s["phase"]
-            s["until"] = now + random.uniform(lo, hi) * args.scale
+            if not s["steps"]:
+                s["steps"] = meal()
+            label, people, dishes, count, secs = s["steps"].pop(0)
+            s["until"] = now + secs * args.scale
             try:
-                post(args.url, tid, people, dishes)
-                print(f"{time.strftime('%H:%M:%S')}  {tid:>4}  {name}")
+                post(args.url, tid, people, dishes, count)
+                print(f"{time.strftime('%H:%M:%S')}  {tid:>4}  {label}")
             except Exception as e:
                 print(f"{tid}: post failed: {e}")
         time.sleep(0.5)

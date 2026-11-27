@@ -110,8 +110,18 @@ def test_agent_on_video_with_fake_detector(tmp_path, monkeypatch):
     agent.main(["--source", path, "--zones", str(zones), "--model", "x", "--every", "2",
                 "--confirm", "2", "--dry-run", "--log", str(log)])
     rows = [(r["table_id"], r["people"], r["dishes"]) for r in csv.DictReader(open(log))]
-    assert [r for r in rows if r[0] == "T1"] == [("T1", "1", "1"), ("T1", "0", "1"), ("T1", "0", "0")]
-    assert [r for r in rows if r[0] == "T2"] == [("T2", "0", "0")]
+
+    def changes(tid):  # drop rows where only the dish count moved
+        out = []
+        for r in rows:
+            if r[0] == tid and (not out or out[-1] != r):
+                out.append(r)
+        return out
+
+    assert changes("T1") == [("T1", "1", "1"), ("T1", "0", "1"), ("T1", "0", "0")]
+    assert changes("T2") == [("T2", "0", "0")]
+    counts = [int(r["dish_count"]) for r in csv.DictReader(open(log)) if r["table_id"] == "T1"]
+    assert counts[0] == 1 and counts[-1] == 0
 
 
 def test_evaluate_alerts_and_report(tmp_path, capsys):

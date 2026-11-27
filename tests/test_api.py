@@ -114,9 +114,9 @@ def test_sse_stream_pushes_updates(tmp_path, floor_path):
             lines = s.iter_lines()
             assert next(lines).startswith("retry:")
             c.post(base + "/api/events", json={"table_id": "T2", "people": True, "dishes": True})
-            data = next(l for l in lines if l.startswith("data:"))
-            table = json.loads(data[5:])["table"]
-            assert (table["id"], table["state"]) == ("T2", "OCCUPIED")
+            msgs = (json.loads(l[5:]) for l in lines if l.startswith("data:"))
+            msg = next(m for m in msgs if m["table"]["id"] == "T2" and m["table"]["state"] == "OCCUPIED")
+            assert msg["table"]["stage"] == "SEATED" and msg["summary"]["tables_in_use"] == 1
     finally:
         server.should_exit = True
 
@@ -126,3 +126,47 @@ def test_last_event_at_tracks_camera(setup):
     assert client.get("/api/tables").json()["last_event_at"] is None
     client.post("/api/events", json={"table_id": "T1", "people": False, "dishes": False})
     assert client.get("/api/tables").json()["last_event_at"] == clock.t
+
+
+def ev(client, tid, people, dishes, count=None):
+    return client.post("/api/events", json={"table_id": tid, "people": people, "dishes": dishes,
+                                             "dish_count": count})
+
+
+def test_summary_fullness_and_tonight(tmp_path, floor_path):
+    clock = Clock()
+    app = create_app(str(tmp_path / "s.db"), floor_path, 3, clock=clock)
+    client = TestClient(app)
+    s = client.get("/api/tables").json()["summary"]
+    assert (s["tables_in_use"], s["tables_total"], s["seats_in_use"], s["seats_total"]) == (0, 2, 0, 6)
+    ev(client, "T2", True, True, 3)
+    s = client.get("/api/tables").json()["summary"]
+    assert (s["tables_in_use"], s["seats_in_use"]) == (1, 4)
+    clock.t += 240
+    ev(client, "T2", True, True, 6)                       # served after 4 min
+    clock.t += 1800
+    ev(client, "T2", False, False, 0)                     # left and bussed
+    s = client.get("/api/tables").json()["summary"]
+    assert s["visits_tonight"] == 1 and s["avg_first_service"] == 240
+    clock.t += 300
+    ev(client, "T2", True, True, 3)                       # next party after 5 empty minutes
+    clock.t += 600
+    ev(client, "T2", False, False, 0)
+    assert client.get("/api/tables").json()["summary"]["avg_empty_between"] == 300
+
+
+def test_not_served_alert_then_served_tap(setup):
+    client, app, clock = setup
+    ev(client, "T1", True, True, 3)
+    clock.t += 601
+    app.state.run_tick()
+    t1 = next(t for t in client.get("/api/tables").json()["tables"] if t["id"] == "T1")
+    assert t1["alert"] == "not_served"
+    r = client.post("/api/tables/T1/served")
+    assert r.json()["alert"] is None and r.json()["stage"] == "SERVED"
+
+
+def test_old_style_events_without_count_still_work(setup):
+    client, _, _ = setup
+    r = client.post("/api/events", json={"table_id": "T1", "people": True, "dishes": True})
+    assert r.json()["stage"] == "SEATED"
