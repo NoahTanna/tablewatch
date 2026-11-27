@@ -1,0 +1,473 @@
+<title>Host Stand Screen Directions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Figtree:wght@400;500;600;800&family=IBM+Plex+Mono:wght@500;600&family=Manrope:wght@400;600;700;800&display=swap">
+<style>
+/* Page chrome: a quiet viewing room for three full-size iPad mockups, picked with a segmented control.
+   Each mockup has its own fixed palette (it is a screen, not page chrome). */
+:root {
+  --page: #eef0ee; --ink: #1d2422; --muted: #5d6965; --line: #d3d8d5; --pick: #1d2422; --pick-ink: #ffffff; --card: #ffffff;
+  --ui: "Manrope", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #171b1a; --ink: #e9eeec; --muted: #9aa6a1; --line: #2d3432; --pick: #e9eeec; --pick-ink: #171b1a; --card: #1f2423; color-scheme: dark; } }
+:root[data-theme="dark"] { --page: #171b1a; --ink: #e9eeec; --muted: #9aa6a1; --line: #2d3432; --pick: #e9eeec; --pick-ink: #171b1a; --card: #1f2423; color-scheme: dark; }
+body { background: var(--page); color: var(--ink); font-family: var(--ui); font-size: 15px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 40px; }
+.page { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 72ch; line-height: 1.5; }
+.picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.picker button { font: inherit; font-weight: 700; font-size: 15px; color: var(--ink); background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 16px; cursor: pointer; min-height: 44px; }
+.picker button[aria-selected="true"] { background: var(--pick); color: var(--pick-ink); border-color: var(--pick); }
+.picker button:focus-visible, .stage button:focus-visible { outline: 3px solid #e58a12; outline-offset: 2px; }
+.about { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 32px; color: var(--muted); line-height: 1.5; }
+.about b { color: var(--ink); }
+.about p { margin: 0; }
+@media (max-width: 700px) { .about { grid-template-columns: 1fr; } }
+.frame { width: 100%; max-width: 100%; position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 10px #111, 0 0 0 11px #333; margin: 11px; width: calc(100% - 22px); }
+.stage { width: 1194px; height: 834px; transform-origin: 0 0; position: absolute; left: 0; top: 0; overflow: hidden; }
+.foot { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+/* ---------- shared screen bits ---------- */
+.stage svg.icon { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.stage button { font: inherit; cursor: pointer; }
+.tap { cursor: pointer; }
+
+/* ---------- A: Floor plan at night ---------- */
+.A { --bg: #0f1722; --floor: #142030; --wall: #8fa3b8; --chair: #2a3a4f; --text: #e8eef5; --muted: #8396ab; --panel: #121c29;
+  --free: #2e9e6b; --seat: #4a5d75; --left: #2f3f53; --wait: #e08a1e; --clear: #e0453a; --hint: #f2c56b;
+  background: var(--bg); color: var(--text); font-family: "Manrope", sans-serif; display: grid; grid-template-rows: 72px 1fr; height: 100%; }
+.A header { display: flex; align-items: center; gap: 28px; padding: 0 26px; border-bottom: 1px solid #1f2c3d; }
+.A .clock { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 110px; }
+.A .fill { display: flex; flex-direction: column; gap: 7px; width: 300px; }
+.A .fill-text { font-size: 17px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.A .fill-text b { color: var(--text); font-weight: 800; }
+.A .bar { height: 8px; background: #22314a; border-radius: 4px; overflow: hidden; }
+.A .bar i { display: block; height: 100%; background: #7d93ad; border-radius: 4px; }
+.A .stats { display: flex; gap: 26px; flex: 1; justify-content: flex-end; }
+.A .stat { display: flex; flex-direction: column; font-size: 13px; color: var(--muted); }
+.A .stat b { font-size: 20px; color: var(--text); font-variant-numeric: tabular-nums; }
+.A .sound { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--muted); background: none; border: 1px solid #2c3d53; border-radius: 999px; padding: 10px 16px; }
+.A .sound.on { color: var(--text); border-color: var(--muted); }
+.A main { display: grid; grid-template-columns: 1fr 352px; min-height: 0; }
+.A .map { padding: 18px 10px 18px 18px; display: flex; align-items: center; }
+.A .map svg { width: 100%; height: 100%; }
+.A aside { background: var(--panel); border-left: 1px solid #1f2c3d; padding: 20px 18px; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.A aside h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--muted); display: flex; justify-content: space-between; }
+.A aside h2 b { color: var(--text); }
+.A .rows { display: flex; flex-direction: column; gap: 10px; }
+.A .row { display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: #192638; border: 0; color: var(--text); text-align: left; }
+.A .row .ic { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 26px; color: #fff; }
+.A .row .t { font-size: 19px; font-weight: 800; }
+.A .row .s { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.A .row .go { font-size: 14px; font-weight: 800; padding: 10px 14px; border-radius: 10px; background: #fff; color: #0f1722; }
+.A .row.clear .ic { background: var(--clear); } .A .row.wait .ic { background: var(--wait); }
+.A .quiet .row { background: transparent; border: 1px solid #22314a; padding: 9px 12px; grid-template-columns: 30px 1fr; }
+.A .quiet .ic { width: 30px; height: 30px; font-size: 19px; background: #22314a; color: var(--hint); border-radius: 8px; }
+.A .quiet .t { font-size: 16px; }
+.A .allclear { color: var(--muted); font-size: 15px; padding: 14px; border: 1px dashed #2c3d53; border-radius: 14px; }
+.A .legend { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 12.5px; color: var(--muted); }
+.A .legend span { display: flex; align-items: center; gap: 7px; }
+.A .legend i { width: 12px; height: 12px; border-radius: 4px; background: var(--c); }
+
+/* ---------- B: Ticket rail ---------- */
+.B { --steel: #2b3136; --rail: #3c444b; --paper: #fbfaf6; --ink: #1e2328; --muted: #6b747d; --text: #eef1f3;
+  --free: #2f9461; --seat: #6b7682; --wait: #e58a12; --clear: #d6382d; --hint: #b7791f;
+  background: var(--steel); color: var(--text); font-family: "Archivo", sans-serif; display: grid; grid-template-rows: 76px 1fr; height: 100%; }
+.B header { display: flex; align-items: center; gap: 30px; padding: 0 24px; background: #23282c; }
+.B .clock { font-size: 30px; font-weight: 800; font-stretch: 75%; font-variant-numeric: tabular-nums; }
+.B .fill { font-size: 18px; color: #aeb6bd; display: flex; align-items: baseline; gap: 6px; }
+.B .fill b { font-size: 30px; font-weight: 900; font-stretch: 70%; color: var(--text); }
+.B .fillbar { display: flex; gap: 3px; }
+.B .fillbar i { width: 14px; height: 22px; border-radius: 3px; background: #3c444b; }
+.B .fillbar i.on { background: #aeb6bd; }
+.B .stats { flex: 1; display: flex; justify-content: flex-end; gap: 22px; font-family: "IBM Plex Mono", monospace; font-size: 13px; color: #aeb6bd; }
+.B .stats b { color: var(--text); font-size: 15px; }
+.B .sound { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: #aeb6bd; background: none; border: 1px solid #4a535b; border-radius: 8px; padding: 10px 14px; display: flex; gap: 8px; align-items: center; }
+.B .sound.on { color: var(--text); border-color: #aeb6bd; }
+.B .lanes { display: grid; grid-template-columns: 1.05fr 1.05fr 1.25fr 1fr 1fr; gap: 12px; padding: 14px 14px 16px; min-height: 0; }
+.B .lane { background: #31383e; border-radius: 12px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.B .lane h2 { margin: 0; padding: 12px 14px 10px; font-size: 21px; font-weight: 800; font-stretch: 80%; display: flex; justify-content: space-between; align-items: baseline;
+  border-bottom: 4px solid var(--c); }
+.B .lane h2 span { font-size: 15px; color: #aeb6bd; font-weight: 600; }
+.B .lane .sub { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: #8c959d; padding: 8px 14px 0; }
+.B .tickets { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; overflow: hidden; }
+.B .ticket { position: relative; background: var(--paper); color: var(--ink); border-radius: 4px 4px 2px 2px; padding: 10px 12px 12px 12px; display: grid;
+  grid-template-columns: auto 1fr; gap: 2px 12px; align-items: center; border-top: 7px solid var(--c); box-shadow: 0 2px 0 #1d2226; text-align: left; border-left: 0; border-right: 0; border-bottom: 0; }
+.B .ticket::after { content: ""; position: absolute; left: 0; right: 0; bottom: -5px; height: 6px;
+  background: linear-gradient(-45deg, transparent 4px, var(--paper) 0) 0 0 / 8px 6px repeat-x, linear-gradient(45deg, transparent 4px, var(--paper) 0) 0 0 / 8px 6px repeat-x; }
+.B .num { grid-row: span 3; font-size: 54px; font-weight: 900; font-stretch: 62%; line-height: 0.9; min-width: 46px; text-align: center; }
+.B .what { font-size: 15px; font-weight: 800; font-stretch: 85%; display: flex; align-items: center; gap: 6px; }
+.B .what .icon { font-size: 17px; color: var(--c); }
+.B .time { font-family: "IBM Plex Mono", monospace; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.B .meta { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.B .meta .h { color: var(--hint); font-weight: 600; }
+.B .ticket.act { box-shadow: 0 2px 0 #1d2226, 0 0 0 3px var(--c); }
+.B .ticket .do { grid-column: 1 / -1; margin-top: 6px; font-size: 13px; font-weight: 800; font-stretch: 85%; color: var(--c); }
+.B .empty { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #7b848c; padding: 6px 2px; }
+
+/* ---------- C: Daylight ---------- */
+.C { --bg: #f2f5f2; --floor: #ffffff; --wall: #c3ccc6; --chair: #dfe5e1; --text: #1f2a26; --muted: #66746e; --track: #e4e9e5;
+  --free: #2b9a66; --seat: #4d6a8c; --left: #a3adb5; --wait: #e2860f; --clear: #d63b30; --hint: #9a6a12;
+  background: var(--bg); color: var(--text); font-family: "Figtree", sans-serif; display: grid; grid-template-rows: 72px auto 1fr 64px; height: 100%; }
+.C header { display: flex; align-items: center; gap: 26px; padding: 0 28px; }
+.C .clock { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.C .fill { display: flex; align-items: center; gap: 14px; flex: 1; }
+.C .dots { display: flex; gap: 5px; }
+.C .dots i { width: 13px; height: 13px; border-radius: 50%; background: var(--track); }
+.C .dots i.on { background: var(--seat); }
+.C .fill span { font-size: 17px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.C .fill b { color: var(--text); }
+.C .sound { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--muted); background: #fff; border: 1px solid #d5ddd8; border-radius: 999px; padding: 10px 16px; }
+.C .sound.on { color: var(--text); border-color: var(--text); }
+.C .alerts { display: flex; gap: 10px; padding: 0 28px 10px; flex-wrap: wrap; min-height: 0; }
+.C .alert { display: flex; align-items: center; gap: 12px; border: 0; border-radius: 14px; padding: 10px 12px 10px 14px; color: #fff; font-size: 18px; font-weight: 700; }
+.C .alert .icon { font-size: 24px; }
+.C .alert small { font-weight: 500; opacity: 0.9; font-size: 15px; }
+.C .alert em { font-style: normal; font-size: 14px; font-weight: 800; background: rgba(255,255,255,0.22); padding: 7px 11px; border-radius: 9px; }
+.C .alert.clear { background: var(--clear); } .C .alert.wait { background: var(--wait); }
+.C .calm { font-size: 16px; color: var(--muted); padding: 10px 2px; }
+.C .map { padding: 0 20px; min-height: 0; }
+.C .map svg { width: 100%; height: 100%; }
+.C footer { display: flex; align-items: center; gap: 32px; padding: 0 28px; border-top: 1px solid #dde3df; background: #fbfcfb; font-size: 15px; color: var(--muted); }
+.C footer b { color: var(--text); font-size: 18px; }
+.C .key { margin-left: auto; display: flex; gap: 16px; font-size: 13.5px; }
+.C .key span { display: flex; align-items: center; gap: 6px; }
+.C .key svg { width: 18px; height: 18px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-clear" viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="9" ry="3.6"/><ellipse cx="12" cy="11.5" rx="6.5" ry="2.6"/><path d="M8.5 6.5c.8-1 1.8-1 2.6 0M13 6c.8-1 1.8-1 2.6 0"/></symbol>
+  <symbol id="i-wait" viewBox="0 0 24 24"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/></symbol>
+  <symbol id="i-eat" viewBox="0 0 24 24"><path d="M5 3v5a3 3 0 0 0 6 0V3M8 3v18M17 3c-2.5 2-2.5 7 0 9v9"/></symbol>
+  <symbol id="i-seat" viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 21c0-4 3-7 7-7s7 3 7 7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5zM9 8h6M9 12h6M9 16h3"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></symbol>
+  <symbol id="i-free" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-long" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></symbol>
+</svg>
+
+<div class="page">
+  <div>
+    <h1>Host stand screen: three directions</h1>
+    <p class="lede">Same restaurant, same moment on a busy Friday, three ways to show it. Each one is a working mockup at iPad size: timers tick, and you can tap a red table to mark it cleared or an orange one to confirm someone has been there. Pick the one you'd want at your host stand, or tell me what to take from each.</p>
+  </div>
+  <div class="picker" role="tablist" aria-label="Design direction">
+    <button role="tab" id="tab-floor" data-v="floor">A · Floor plan at night</button>
+    <button role="tab" id="tab-board" data-v="board">B · Ticket rail</button>
+    <button role="tab" id="tab-daylight" data-v="daylight">C · Daylight</button>
+  </div>
+  <div class="about" id="about"></div>
+  <div class="frame" id="frame"><div class="stage" id="stage"></div></div>
+  <p class="foot">Example data: 14 tables, a made-up dinner service. Nothing here comes from a real restaurant. "Eating" replaces "Served" as the stage name in all three, because that's how a host talks about a table.</p>
+</div>
+
+<script>
+// ---------- Example service (shared by all three directions) ----------
+const NOW = () => Date.now() / 1000;
+const START = NOW();
+const M = 60;
+// stage: FREE | SEATED | EATING | FINISHING | LEFT | CLEAR. ago = seconds since that stage began; seated = seconds since the party sat.
+const TABLES = [
+  { id: 1,  seats: 2, section: "Window", stage: "FREE", ago: 6 * M, turned: true },
+  { id: 2,  seats: 2, section: "Window", stage: "EATING", seated: 34 * M },
+  { id: 3,  seats: 2, section: "Window", stage: "CLEAR", ago: 4 * M + 12 },
+  { id: 4,  seats: 2, section: "Window", stage: "SEATED", seated: 3 * M + 20 },
+  { id: 5,  seats: 4, section: "Main", stage: "SEATED", seated: 12 * M + 5 },
+  { id: 6,  seats: 4, section: "Main", stage: "EATING", seated: 51 * M },
+  { id: 7,  seats: 4, section: "Main", stage: "FINISHING", ago: 12 * M, seated: 68 * M },
+  { id: 8,  seats: 4, section: "Main", stage: "LEFT", ago: 65 },
+  { id: 9,  seats: 4, section: "Main", stage: "FREE", ago: 0, turned: false },
+  { id: 10, seats: 4, section: "Main", stage: "EATING", seated: 108 * M },
+  { id: 11, seats: 4, section: "Booths", stage: "EATING", seated: 22 * M },
+  { id: 12, seats: 4, section: "Booths", stage: "CLEAR", ago: 100 },
+  { id: 13, seats: 4, section: "Booths", stage: "FREE", ago: 14 * M, turned: true },
+  { id: 14, seats: 8, section: "Main", stage: "EATING", seated: 41 * M },
+].map(t => ({ ...t, since: START - (t.ago || 0), seatedAt: t.seated != null ? START - t.seated : null }));
+const WAIT_AFTER = 10 * M, CHECK_AFTER = 10 * M, LONG_STAY = 90 * M;
+const TONIGHT = { firstService: 7 * M, emptyBetween: 11 * M };
+
+function status(t) {
+  const n = NOW();
+  let key = t.stage, label, time = "", hints = [];
+  const mins = s => { s = Math.max(0, Math.floor(s / 60)); return s >= 60 ? `${Math.floor(s / 60)} h ${String(s % 60).padStart(2, "0")}` : `${s} min`; };
+  const clk = s => { s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+  if (t.stage === "SEATED" && n - t.seatedAt >= WAIT_AFTER) key = "WAIT";
+  switch (key) {
+    case "FREE": { const emptyFor = t.turned && n - t.since >= 60; label = emptyFor ? "Empty for" : "Free"; time = emptyFor ? mins(n - t.since) : ""; break; }
+    case "SEATED": label = "Just seated"; time = mins(n - t.seatedAt); break;
+    case "WAIT": label = "Nothing served"; time = mins(n - t.seatedAt); break;
+    case "EATING": label = "Eating"; time = mins(n - t.seatedAt); break;
+    case "FINISHING": label = "Plates gone"; time = mins(n - t.since); if (n - t.since >= CHECK_AFTER) hints.push("check"); break;
+    case "LEFT": label = "Guests left"; time = clk(n - t.since); break;
+    case "CLEAR": label = "Clear table"; time = clk(n - t.since); break;
+  }
+  if (t.seatedAt != null && ["SEATED", "WAIT", "EATING", "FINISHING"].includes(key) && n - t.seatedAt >= LONG_STAY) hints.push("long");
+  return { key, label, time, hints, alert: key === "CLEAR" ? "clear" : key === "WAIT" ? "wait" : null, age: n - (key === "WAIT" ? t.seatedAt : t.since) };
+}
+function act(id) {
+  const t = TABLES.find(x => x.id === id), s = status(t);
+  if (s.key === "CLEAR") Object.assign(t, { stage: "FREE", since: NOW(), turned: true, seatedAt: null });
+  else if (s.key === "WAIT") Object.assign(t, { stage: "EATING" });
+  else return;
+  render();
+}
+function summary() {
+  const busy = TABLES.filter(t => ["SEATED", "EATING", "FINISHING"].includes(t.stage));
+  return { tables: busy.length, total: TABLES.length, seats: busy.reduce((a, t) => a + t.seats, 0), seatsTotal: TABLES.reduce((a, t) => a + t.seats, 0) };
+}
+const mapTime = (s, g) => (s.key === "FREE" && g.shape !== "round" ? `empty ${s.time}` : s.time);
+const icon = (name, extra = "") => `<svg class="icon" ${extra} aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const ICON = { FREE: "free", SEATED: "seat", WAIT: "wait", EATING: "eat", FINISHING: "check", LEFT: "left", CLEAR: "clear" };
+// The example service runs at 8:14 PM on a Friday, then ticks on in real time.
+const SERVICE_START = new Date(2026, 10, 27, 20, 14).getTime();
+const timeNow = () => new Date(SERVICE_START + (NOW() - START) * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+// ---------- Sound (one soft chime per new alert, after a tap) ----------
+let audio = null; const chimed = new Set();
+function chime() {
+  if (!audio) return;
+  const t0 = audio.currentTime;
+  [[880, 0], [660, 0.18]].forEach(([f, at]) => {
+    const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0 + at); g.gain.exponentialRampToValueAtTime(0.25, t0 + at + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.5);
+    o.connect(g).connect(audio.destination); o.start(t0 + at); o.stop(t0 + at + 0.55);
+  });
+}
+function toggleSound() {
+  if (audio) { audio.close(); audio = null; }
+  else { try { audio = new (window.AudioContext || window.webkitAudioContext)(); chime(); } catch (e) { audio = null; } }
+  render();
+}
+function checkChime() {
+  let fresh = false; const live = new Set();
+  TABLES.forEach(t => { const s = status(t); if (s.alert) { const k = t.id + s.alert; live.add(k); if (!chimed.has(k)) { chimed.add(k); fresh = true; } } });
+  [...chimed].forEach(k => { if (!live.has(k)) chimed.delete(k); });
+  if (fresh) chime();
+}
+const soundBtn = cls => `<button class="sound ${audio ? "on" : ""}" data-sound="1">${icon("bell")} ${audio ? "Sound on" : "Sound off"}</button>`;
+
+// ---------- Floor geometry (shared by A and C), 1000 x 700 plan units ----------
+const GEO = {
+  1: { x: 120, y: 112, w: 74, h: 74, shape: "round" }, 2: { x: 262, y: 112, w: 74, h: 74, shape: "round" },
+  3: { x: 404, y: 112, w: 74, h: 74, shape: "round" }, 4: { x: 546, y: 112, w: 74, h: 74, shape: "round" },
+  5: { x: 150, y: 300, w: 90, h: 90, shape: "square" }, 6: { x: 326, y: 300, w: 90, h: 90, shape: "square" },
+  7: { x: 502, y: 300, w: 90, h: 90, shape: "square" }, 8: { x: 150, y: 470, w: 90, h: 90, shape: "square" },
+  9: { x: 326, y: 470, w: 90, h: 90, shape: "square" }, 10: { x: 502, y: 470, w: 90, h: 90, shape: "square" },
+  11: { x: 735, y: 140, w: 118, h: 84, shape: "booth" }, 12: { x: 735, y: 305, w: 118, h: 84, shape: "booth" },
+  13: { x: 735, y: 470, w: 118, h: 84, shape: "booth" }, 14: { x: 380, y: 618, w: 270, h: 66, shape: "rect" },
+};
+function chairs(g, seats, fill) {
+  const out = []; const { x, y, w, h } = g;
+  const r = (cx, cy, cw, ch) => out.push(`<rect x="${cx - cw / 2}" y="${cy - ch / 2}" width="${cw}" height="${ch}" rx="6" fill="${fill}"/>`);
+  if (g.shape === "round") { r(x - w / 2 - 15, y, 16, 34); r(x + w / 2 + 15, y, 16, 34); }
+  else if (g.shape === "square") { r(x, y - h / 2 - 14, 36, 14); r(x, y + h / 2 + 14, 36, 14); r(x - w / 2 - 14, y, 14, 36); r(x + w / 2 + 14, y, 14, 36); }
+  else if (g.shape === "booth") { out.push(`<rect x="${x - w / 2 - 26}" y="${y - h / 2 - 6}" width="20" height="${h + 12}" rx="7" fill="${fill}"/><rect x="${x + w / 2 + 6}" y="${y - h / 2 - 6}" width="20" height="${h + 12}" rx="7" fill="${fill}"/>`); }
+  else { [-1, 0, 1].forEach(i => { r(x + i * 80, y - h / 2 - 14, 40, 14); r(x + i * 80, y + h / 2 + 14, 40, 14); }); r(x - w / 2 - 14, y, 14, 36); r(x + w / 2 + 14, y, 14, 36); }
+  return out.join("");
+}
+function tableShape(g, attrs) {
+  const { x, y, w, h } = g;
+  return g.shape === "round" ? `<circle cx="${x}" cy="${y}" r="${w / 2}" ${attrs}/>` : `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="${g.shape === "rect" ? 14 : 12}" ${attrs}/>`;
+}
+function room(c) {
+  return `
+    <rect x="20" y="24" width="960" height="652" rx="6" fill="${c.floor}"/>
+    <path d="M20 24H980V676H900M820 676H170M70 676H20V24" fill="none" stroke="${c.wall}" stroke-width="4"/>
+    <path d="M60 24H640" stroke="${c.wall}" stroke-width="10" stroke-dasharray="70 10" opacity="0.45"/>
+    <text x="350" y="50" text-anchor="middle" font-size="13" fill="${c.muted}" letter-spacing="1">window</text>
+    <rect x="900" y="80" width="56" height="470" rx="8" fill="${c.chair}"/>
+    <text x="928" y="320" text-anchor="middle" font-size="14" fill="${c.muted}" transform="rotate(90 928 320)">bar</text>
+    <text x="860" y="664" text-anchor="middle" font-size="13" fill="${c.muted}">kitchen</text>
+    <text x="120" y="664" text-anchor="middle" font-size="13" fill="${c.muted}">entrance</text>
+    <circle cx="70" cy="625" r="9" fill="${c.you}"/><text x="86" y="630" font-size="14" font-weight="700" fill="${c.youText}">You</text>`;
+}
+
+// ---------- A: Floor plan at night ----------
+function renderA() {
+  const c = { floor: "#142030", wall: "#8fa3b8", chair: "#22324a", muted: "#6f839a", you: "#e8eef5", youText: "#e8eef5" };
+  const fills = { FREE: "#2e9e6b", SEATED: "#4a5d75", EATING: "#4a5d75", FINISHING: "#4a5d75", LEFT: "#2f3f53", WAIT: "#e08a1e", CLEAR: "#e0453a" };
+  let tables = "";
+  TABLES.forEach(t => {
+    const g = GEO[t.id], s = status(t), f = fills[s.key], tap = s.alert ? `class="tap" data-act="${t.id}"` : "";
+    const ring = s.alert ? `stroke="#fff" stroke-width="3"` : s.key === "LEFT" ? `stroke="#8fa3b8" stroke-width="2" stroke-dasharray="6 5"` : `stroke="none"`;
+    const small = g.shape === "round";
+    tables += `<g ${tap}>${chairs(g, t.seats, c.chair)}${tableShape(g, `fill="${f}" ${ring}`)}
+      <text x="${g.x}" y="${g.y + (s.time ? -2 : 9)}" text-anchor="middle" font-size="${small ? 28 : 32}" font-weight="800" fill="#fff">${t.id}</text>
+      ${s.time ? `<text x="${g.x}" y="${g.y + 20}" text-anchor="middle" font-size="${small ? 12.5 : 14}" font-weight="600" fill="#fff" opacity="0.9">${mapTime(s, g)}</text>` : ""}
+      <use href="#i-${ICON[s.key]}" x="${g.x + g.w / 2 - 14}" y="${g.y - g.h / 2 - 10}" width="24" height="24" style="color:#fff" fill="none" stroke="currentColor" stroke-width="2.2"/>
+      ${s.hints.map((h, i) => `<g transform="translate(${g.x - 36 + i * 0} ${g.y + g.h / 2 + (g.shape === "booth" ? 18 : 30) + i * 24})"><rect width="72" height="20" rx="10" fill="#0f1722" stroke="#f2c56b"/><text x="36" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#f2c56b">${h === "check" ? "check?" : "long stay"}</text></g>`).join("")}
+    </g>`;
+  });
+  const sum = summary();
+  const urgent = TABLES.map(t => ({ t, s: status(t) })).filter(x => x.s.alert).sort((a, b) => (a.s.alert === b.s.alert ? b.s.age - a.s.age : a.s.alert === "clear" ? -1 : 1));
+  const quiet = TABLES.map(t => ({ t, s: status(t) })).filter(x => !x.s.alert && (x.s.hints.length || x.s.key === "LEFT"));
+  return `<div class="A">
+    <header>
+      <div class="clock">${timeNow()}</div>
+      <div class="fill"><div class="fill-text"><b>${sum.tables} of ${sum.total}</b> tables · <b>${sum.seats} of ${sum.seatsTotal}</b> seats</div><div class="bar"><i style="width:${(100 * sum.tables) / sum.total}%"></i></div></div>
+      <div class="stats"><div class="stat"><b>${Math.round(TONIGHT.firstService / 60)} min</b>first service tonight</div><div class="stat"><b>${Math.round(TONIGHT.emptyBetween / 60)} min</b>empty between parties</div></div>
+      ${soundBtn()}
+    </header>
+    <main>
+      <div class="map"><svg viewBox="0 0 1000 700" role="img" aria-label="Floor plan with table status" font-family="Manrope, sans-serif">${room(c)}${tables}</svg></div>
+      <aside>
+        <h2>Needs you <b>${urgent.length}</b></h2>
+        <div class="rows">${urgent.length ? urgent.map(({ t, s }) => `
+          <button class="row ${s.alert}" data-act="${t.id}">
+            <span class="ic">${icon(ICON[s.key])}</span>
+            <span><div class="t">Table ${t.id}</div><div class="s">${s.alert === "clear" ? `Dishes left · ${s.time}` : `Seated ${s.time}, nothing yet`}</div></span>
+            <span class="go">${s.alert === "clear" ? "Cleared" : "Visited"}</span>
+          </button>`).join("") : `<div class="allclear">Nothing needs you right now.</div>`}</div>
+        <h2>Keep an eye on</h2>
+        <div class="rows quiet">${quiet.map(({ t, s }) => `<div class="row"><span class="ic">${icon(s.key === "LEFT" ? "left" : s.hints[0] === "check" ? "check" : "long")}</span>
+          <span><div class="t">Table ${t.id}</div><div class="s">${s.key === "LEFT" ? `Guests just left · ${s.time}` : s.hints[0] === "check" ? `Plates gone ${s.time}, maybe the check` : `Seated ${s.time}, a long stay`}</div></span></div>`).join("")}</div>
+        <div class="legend">
+          <span style="--c:#e0453a"><i></i>Clear table</span><span style="--c:#e08a1e"><i></i>Nothing served</span>
+          <span style="--c:#4a5d75"><i></i>Seated / eating</span><span style="--c:#2e9e6b"><i></i>Free</span>
+        </div>
+      </aside>
+    </main></div>`;
+}
+
+// ---------- B: Ticket rail ----------
+function renderB() {
+  const sum = summary();
+  const lanes = [
+    { name: "Clear now", sub: "tap when cleared", c: "#d6382d", keys: ["CLEAR"] },
+    { name: "Needs service", sub: "nothing on the table yet", c: "#e58a12", keys: ["WAIT", "SEATED"] },
+    { name: "Eating", sub: "", c: "#8a949e", keys: ["EATING"] },
+    { name: "Wrapping up", sub: "plates gone or just left", c: "#8a949e", keys: ["FINISHING", "LEFT"] },
+    { name: "Open", sub: "ready to seat", c: "#2f9461", keys: ["FREE"] },
+  ];
+  const ticketColor = { CLEAR: "#d6382d", WAIT: "#e58a12", SEATED: "#b9c0c7", EATING: "#b9c0c7", FINISHING: "#b9c0c7", LEFT: "#6b7682", FREE: "#2f9461" };
+  const all = TABLES.map(t => ({ t, s: status(t) }));
+  const lane = l => {
+    const items = all.filter(x => l.keys.includes(x.s.key)).sort((a, b) => b.s.age - a.s.age);
+    return `<section class="lane" style="--c:${l.c}"><h2>${l.name} <span>${items.length}</span></h2>${l.sub ? `<div class="sub">${l.sub}</div>` : ""}
+      <div class="tickets">${items.length ? items.map(({ t, s }) => `
+        <${s.alert ? `button data-act="${t.id}"` : "div"} class="ticket ${s.alert ? "act" : ""}" style="--c:${ticketColor[s.key]}">
+          <div class="num">${t.id}</div>
+          <div class="what">${icon(ICON[s.key])} ${s.label}</div>
+          <div class="time">${s.time || "set and ready"}</div>
+          <div class="meta"><span>${t.seats} seats · ${t.section}</span>${s.hints.map(h => `<span class="h">${h === "check" ? "check?" : "long stay"}</span>`).join("")}</div>
+          ${s.alert ? `<div class="do">${s.alert === "clear" ? "Tap when cleared" : "Tap once someone has been over"}</div>` : ""}
+        </${s.alert ? "button" : "div"}>`).join("") : `<div class="empty">none</div>`}</div></section>`;
+  };
+  return `<div class="B">
+    <header>
+      <div class="clock">${timeNow()}</div>
+      <div class="fill"><b>${sum.tables}/${sum.total}</b> tables</div>
+      <div class="fillbar">${TABLES.map((t, i) => `<i class="${i < sum.tables ? "on" : ""}"></i>`).join("")}</div>
+      <div class="fill"><b>${sum.seats}/${sum.seatsTotal}</b> seats</div>
+      <div class="stats"><span>first service <b>${Math.round(TONIGHT.firstService / 60)}m</b></span><span>empty between <b>${Math.round(TONIGHT.emptyBetween / 60)}m</b></span></div>
+      ${soundBtn()}
+    </header>
+    <div class="lanes">${lanes.map(lane).join("")}</div></div>`;
+}
+
+// ---------- C: Daylight ----------
+function renderC() {
+  const c = { floor: "#ffffff", wall: "#c3ccc6", chair: "#e3e8e4", muted: "#8a968f", you: "#1f2a26", youText: "#1f2a26" };
+  const sum = summary();
+  const progress = (t, s) => {
+    const n = NOW();
+    if (s.key === "SEATED" || s.key === "WAIT") return 0.1;
+    if (s.key === "EATING") return Math.min(0.8, 0.25 + (n - t.seatedAt) / (75 * M) * 0.55);
+    if (s.key === "FINISHING") return 0.9;
+    return 0;
+  };
+  let tables = "";
+  TABLES.forEach(t => {
+    const g = GEO[t.id], s = status(t), tap = s.alert ? `class="tap" data-act="${t.id}"` : "";
+    const solid = s.alert === "clear" ? "#d63b30" : s.alert === "wait" ? "#e2860f" : null;
+    const free = s.key === "FREE", left = s.key === "LEFT";
+    const fill = solid || (free ? "#e9f6ef" : "#ffffff");
+    const stroke = solid || (free ? "#2b9a66" : left ? "#a3adb5" : "#e4e9e5");
+    const txt = solid ? "#fff" : "#1f2a26";
+    // Meal ring: a track around the table, filled clockwise as the meal goes on.
+    const p = progress(t, s);
+    let ring = "";
+    if (!solid && !free) {
+      const pad = 9;
+      if (g.shape === "round") {
+        const r = g.w / 2 + pad, L = 2 * Math.PI * r;
+        ring = `<circle cx="${g.x}" cy="${g.y}" r="${r}" fill="none" stroke="#e4e9e5" stroke-width="7"/>${p ? `<circle cx="${g.x}" cy="${g.y}" r="${r}" fill="none" stroke="#4d6a8c" stroke-width="7" stroke-linecap="round" stroke-dasharray="${p * L} ${L}" transform="rotate(-90 ${g.x} ${g.y})"/>` : ""}`;
+      } else {
+        const w = g.w + pad * 2, h = g.h + pad * 2, L = 2 * (w + h);
+        ring = `<rect x="${g.x - w / 2}" y="${g.y - h / 2}" width="${w}" height="${h}" rx="16" fill="none" stroke="#e4e9e5" stroke-width="7"/>${p ? `<rect x="${g.x - w / 2}" y="${g.y - h / 2}" width="${w}" height="${h}" rx="16" fill="none" stroke="#4d6a8c" stroke-width="7" stroke-linecap="round" pathLength="${L}" stroke-dasharray="${p * L} ${L}" />` : ""}`;
+      }
+    }
+    tables += `<g ${tap}>${chairs(g, t.seats, c.chair)}${ring}${tableShape(g, `fill="${fill}" stroke="${stroke}" stroke-width="${solid ? 0 : 2.5}" ${left ? 'stroke-dasharray="6 5"' : ""}`)}
+      <text x="${g.x}" y="${g.y + (s.time ? -3 : 10)}" text-anchor="middle" font-size="${g.shape === "round" ? 28 : 32}" font-weight="800" fill="${txt}">${t.id}</text>
+      ${s.time ? `<text x="${g.x}" y="${g.y + 19}" text-anchor="middle" font-size="${g.shape === "round" ? 12.5 : 14}" font-weight="600" fill="${solid ? "#fff" : "#66746e"}">${mapTime(s, g)}</text>` : ""}
+      ${s.hints.map((h, i) => `<g transform="translate(${g.x - 37} ${g.y + g.h / 2 + (g.shape === "booth" ? 18 : 30) + i * 24})"><rect width="74" height="21" rx="10.5" fill="#fff5e0" stroke="#e8c27a"/><text x="37" y="15" text-anchor="middle" font-size="12" font-weight="700" fill="#9a6a12">${h === "check" ? "check?" : "long stay"}</text></g>`).join("")}
+    </g>`;
+  });
+  const urgent = TABLES.map(t => ({ t, s: status(t) })).filter(x => x.s.alert).sort((a, b) => (a.s.alert === b.s.alert ? b.s.age - a.s.age : a.s.alert === "clear" ? -1 : 1));
+  return `<div class="C">
+    <header>
+      <div class="clock">${timeNow()}</div>
+      <div class="fill"><div class="dots">${TABLES.map((t, i) => `<i class="${i < sum.tables ? "on" : ""}"></i>`).join("")}</div>
+        <span><b>${sum.tables} of ${sum.total}</b> tables · <b>${sum.seats} of ${sum.seatsTotal}</b> seats</span></div>
+      ${soundBtn()}
+    </header>
+    <div class="alerts">${urgent.length ? urgent.map(({ t, s }) => `<button class="alert ${s.alert}" data-act="${t.id}">${icon(ICON[s.key])}
+        <span>Table ${t.id} <small>${s.alert === "clear" ? `clear it · ${s.time}` : `nothing served · ${s.time}`}</small></span><em>${s.alert === "clear" ? "Cleared" : "Visited"}</em></button>`).join("")
+      : `<div class="calm">All good. Nothing needs you right now.</div>`}</div>
+    <div class="map"><svg viewBox="0 0 1000 700" role="img" aria-label="Floor plan with table status" font-family="Figtree, sans-serif">${room(c)}${tables}</svg></div>
+    <footer>
+      <span>First service tonight <b>${Math.round(TONIGHT.firstService / 60)} min</b></span>
+      <span>Empty between parties <b>${Math.round(TONIGHT.emptyBetween / 60)} min</b></span>
+      <div class="key">
+        <span><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="#e4e9e5" stroke-width="3"/><path d="M10 3a7 7 0 0 1 7 7" fill="none" stroke="#4d6a8c" stroke-width="3" stroke-linecap="round"/></svg>ring fills as the meal goes on</span>
+        <span><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="#e9f6ef" stroke="#2b9a66" stroke-width="2"/></svg>free</span>
+        <span><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="#fff" stroke="#a3adb5" stroke-width="2" stroke-dasharray="4 3"/></svg>guests left</span>
+      </div>
+    </footer></div>`;
+}
+
+// ---------- Page ----------
+const VIEWS = {
+  floor: { render: renderA, about: [
+    "<b>A dark floor plan of the actual room</b>, with the window, bar, kitchen door and your spot at the host stand. It's easy on the eyes in a dim dining room.",
+    "<b>A \"Needs you\" list on the right</b> puts the tables to act on in order, so the host doesn't have to scan the map. Quieter things sit below it." ] },
+  board: { render: renderB, about: [
+    "<b>No map.</b> Every table is a ticket, sorted into lanes by what the host has to do, like a kitchen ticket rail. Oldest on top.",
+    "<b>Best for hosts who think in table numbers</b>, or rooms whose layout changes. It's the fastest to read, but you lose the sense of where tables are." ] },
+  daylight: { render: renderC, about: [
+    "<b>A bright floor plan</b> for daytime service and sunny rooms. Calm until something needs you: only red and orange tables are filled with color.",
+    "<b>A ring around each table fills as the meal goes on</b>, from just seated to plates gone, so you can see which tables will free up next." ] },
+};
+let view = "floor";
+const stage = document.getElementById("stage"), frame = document.getElementById("frame");
+function render() {
+  stage.innerHTML = VIEWS[view].render();
+  checkChime();
+}
+function show(v) {
+  view = VIEWS[v] ? v : "floor";
+  document.querySelectorAll(".picker button").forEach(b => b.setAttribute("aria-selected", b.dataset.v === view));
+  document.getElementById("about").innerHTML = VIEWS[view].about.map(p => `<p>${p}</p>`).join("");
+  render();
+}
+function fit() {
+  const s = frame.clientWidth / 1194;
+  stage.style.transform = `scale(${s})`;
+  frame.style.height = `${834 * s}px`;
+}
+document.querySelectorAll(".picker button").forEach(b => b.addEventListener("click", () => { location.hash = b.dataset.v; show(b.dataset.v); }));
+stage.addEventListener("click", e => {
+  if (e.target.closest("[data-sound]")) return toggleSound();
+  const a = e.target.closest("[data-act]");
+  if (a) act(Number(a.dataset.act));
+});
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+new ResizeObserver(fit).observe(frame);
+show(location.hash.slice(1));
+fit();
+setInterval(render, 1000);
+</script>
