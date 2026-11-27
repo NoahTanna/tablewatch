@@ -11,7 +11,9 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend import state
+from datetime import timedelta
+
+from backend import reports, state
 from backend.db import DB
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -161,6 +163,21 @@ def create_app(db_path=None, floor_path=None, clear_after_min=None, clock=time.t
         """Staff tapped a 'nobody's been here' table to say it has been looked after."""
         old = get_or_404(table_id)
         return save_and_publish(old, state.mark_served(old, clock()))
+
+    @app.get("/api/reports/night")
+    def report_night(day: str | None = None):
+        """One service day (04:00 to 04:00). Default: the current one."""
+        d = reports.parse_day(day, clock())
+        return reports.night(db.visits_between(*reports.night_bounds(d)), d, floor["tables"],
+                             not_served_after, min_visit)
+
+    @app.get("/api/reports/week")
+    def report_week(end: str | None = None):
+        """The 7 service days ending with `end` (default: the current one)."""
+        last = reports.parse_day(end, clock())
+        days = [last - timedelta(days=i) for i in range(6, -1, -1)]
+        by_day = {d: db.visits_between(*reports.night_bounds(d)) for d in days}
+        return reports.week(by_day, floor["tables"], not_served_after, min_visit)
 
     @app.get("/api/floor")
     def get_floor():

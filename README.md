@@ -12,6 +12,17 @@ A live screen on an iPad at the host stand, driven by the dining-room camera. Tw
 | *check?* chip | Plates gone for 10 min, guests still sitting: maybe waiting for the check (a hint; the camera is weakest here) | Silent |
 | *long stay* chip | Seated much longer than tonight's typical party (90 min until there's enough data) | Silent |
 
+A third tab, **Reports**, covers the end of the night and the week. All of it is worked out from table times only, with no per-server numbers:
+- parties seated and turns per table;
+- typical meal length;
+- time to first service, and how many tables waited past the "nothing served" alert;
+- how long dirty tables waited to be cleared, and how many went red;
+- table time not earning (dirty plus empty), with a rough "about N more parties" estimate;
+- how full the room was hour by hour;
+- a by-table breakdown.
+
+The week view compares the last 7 nights; tap a night to open it. A night runs 4 AM to 4 AM, so late tables count toward the evening they started. To try it with made-up history: `python tools/sample_history.py demo.db`, then `./dev.sh demo`. Never run that on a real restaurant's database.
+
 The header shows how full the room is (tables and seats) and tonight's averages: time from sitting down to first service, and empty time between parties. A freshly set table with clean glasses stays green. There are no per-server numbers. Why these features: see [docs/research.md](docs/research.md).
 
 ```
@@ -141,6 +152,8 @@ One agent watches one camera. For a second camera, run a second agent with its o
 | GET  | `/api/stream` | Server-Sent Events: one message for each table change |
 | POST | `/api/tables/{id}/clear` | Staff marked the table cleared, so it becomes FREE |
 | POST | `/api/tables/{id}/served` | Staff confirmed someone has been to a WAITING table |
+| GET  | `/api/reports/night?day=YYYY-MM-DD` | One night's report (default: tonight) |
+| GET  | `/api/reports/week?end=YYYY-MM-DD` | The 7 nights ending on that day |
 | GET  | `/api/floor` | Floor layout |
 
 ## Layout

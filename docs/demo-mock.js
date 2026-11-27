@@ -4,6 +4,9 @@
 // tools/build_demo.py; never used by the real app.
 (function () {
   const FLOOR = /*FLOOR_JSON*/ null;
+  // Reports: the real report code run on made-up history at build time (tools/build_demo.py).
+  // Night k = k nights before "tonight". Dates are moved to line up with today.
+  const REPORTS = /*REPORTS_JSON*/ null;
   const CFG = { clearAfter: 20, notServed: 30, platesGone: 5, checkHint: 20, longStay: 100, minVisit: 15 };
   const SERVED_DELTA = 2, SET = 3;
   const now = () => Date.now() / 1000;
@@ -110,9 +113,43 @@
     }
   }
   const reply = (body) => Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+  const DAY = 86400000;
+  const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const noon = (iso) => new Date(iso + "T12:00:00");
+  const tonight = () => isoOf(new Date(Date.now() - 4 * 3600 * 1000));
+  const offsetOf = (iso) => Math.round((noon(tonight()) - noon(iso)) / DAY);
+  const label = (iso) => { const d = noon(iso); return `${d.toLocaleDateString("en-US", { weekday: "long" })}, ${d.toLocaleDateString("en-US", { month: "short" })} ${d.getDate()}`; };
+  const shift = () => Math.round((noon(tonight()) - noon(REPORTS.base)) / 1000);
+  function nightReport(iso) {
+    const off = offsetOf(iso), r = REPORTS.nights[off];
+    if (!r) return { day: iso, label: label(iso), parties: 0 };
+    const s = shift(), at = (x) => (x ? { ...x, at: x.at + s } : x);
+    return { ...r, day: iso, label: label(iso), worst_clear_wait: at(r.worst_clear_wait), slowest_first_service: r.slowest_first_service.map(at) };
+  }
+  function weekReport(iso) {
+    // Same totals as backend/reports.py week(), assembled from the nightly reports.
+    const days = Array.from({ length: 7 }, (_, i) => isoOf(new Date(noon(iso) - (6 - i) * DAY)));
+    const nights = days.map((d) => {
+      const r = nightReport(d), busiest = (r.busy_hours || []).reduce((a, h) => (!a || h.busy > a.busy ? h : a), null);
+      const pick = (k) => (r[k] === undefined ? null : r[k]);
+      return { day: d, label: r.label, short: noon(d).toLocaleDateString("en-US", { weekday: "short" }), parties: r.parties,
+        avg_stay: pick("avg_stay"), avg_first_service: pick("avg_first_service"), late_starts: r.late_starts || 0,
+        avg_clear_wait: pick("avg_clear_wait"), went_red: r.went_red || 0, avg_empty_between: pick("avg_empty_between"),
+        idle_table_time: r.idle_table_time || 0, extra_parties_estimate: pick("extra_parties_estimate"),
+        busiest_hour: busiest && busiest.busy > 0 ? busiest.hour : null };
+    });
+    const sum = (k) => nights.reduce((a, n) => a + (n[k] || 0), 0);
+    const slow = nights.filter((n) => n.parties && n.avg_clear_wait != null).reduce((a, n) => (!a || n.avg_clear_wait > a.avg_clear_wait ? n : a), null);
+    return { start: days[0], end: iso, nights, parties: sum("parties"), went_red: sum("went_red"), late_starts: sum("late_starts"),
+      late_after: REPORTS.nights[0].late_after, idle_table_time: sum("idle_table_time"),
+      extra_parties_estimate: sum("extra_parties_estimate"), slowest_clearing_night: slow ? slow.label : null };
+  }
+
   window.fetch = function (url, opts) {
     const path = String(url);
     if (path === "/api/floor") return reply(FLOOR);
+    const rq = path.match(/^\/api\/reports\/(night|week)(?:\?(?:day|end)=([0-9-]+))?$/);
+    if (rq) return reply(rq[1] === "night" ? nightReport(rq[2] || tonight()) : weekReport(rq[2] || tonight()));
     if (path === "/api/tables") return reply({ now: now(), last_event_at: now(), summary: summary(), tables: Object.values(T).map(view) });
     const m = path.match(/^\/api\/tables\/([^/]+)\/(clear|served)$/);
     if (m && opts && opts.method === "POST") {

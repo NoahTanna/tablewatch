@@ -120,7 +120,10 @@ def finished_visit(old, new):
     served = old.get("served_at")
     return {"table_id": old["id"], "seated_at": seated, "left_at": left,
             "first_service": served - seated if served is not None else None,
-            "empty_before": old.get("empty_before")}
+            "empty_before": old.get("empty_before"),
+            # cleared: the table went FREE (None if a new party sat at the dirty table)
+            "cleared_at": new["updated_at"] if new.get("state") == FREE else None,
+            "went_red": old.get("state") == NEEDS_CLEARING}
 
 
 def view(t, now, cfg):

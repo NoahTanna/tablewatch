@@ -163,10 +163,9 @@ function renderHeader() {
     dots.innerHTML = s.tables_total > 16
       ? `<i style="width:${(100 * s.tables_in_use) / Math.max(1, s.tables_total)}%"></i>`
       : Array.from({ length: s.tables_total }, (_, i) => `<i class="${i < s.tables_in_use ? "on" : ""}"></i>`).join("");
-    document.getElementById("fill-text").innerHTML = `<b>${s.tables_in_use} of ${s.tables_total}</b> tables · <b>${s.seats_in_use} of ${s.seats_total}</b> seats`;
+    document.getElementById("fill-text").innerHTML = `<b>${s.tables_in_use} of ${s.tables_total}</b> tables<br><b>${s.seats_in_use} of ${s.seats_total}</b> seats`;
   }
-  document.getElementById("v-map").setAttribute("aria-pressed", view === "map");
-  document.getElementById("v-list").setAttribute("aria-pressed", view === "list");
+  for (const v of ["map", "list", "reports"]) document.getElementById("v-" + v).setAttribute("aria-pressed", view === v);
   document.getElementById("theme").innerHTML = theme === "light" ? `${icon("moon")}Dark` : `${icon("sun")}Light`;
   const snd = document.getElementById("sound");
   snd.innerHTML = `${icon("bell")}${audio ? "Sound on" : "Sound off"}`;
@@ -203,9 +202,11 @@ function render() {
   document.documentElement.dataset.theme = theme;
   document.getElementById("map-view").hidden = view !== "map";
   document.getElementById("list-view").hidden = view !== "list";
+  document.getElementById("reports-view").hidden = view !== "reports";
+  document.getElementById("footer").hidden = view === "reports";
   renderHeader();
-  renderAlerts();
-  if (view === "map") renderMap(); else renderList();
+  renderAlerts(); // stays visible on Reports too, so a red table is never missed
+  if (view === "map") renderMap(); else if (view === "list") renderList(); // reports draw themselves
   renderFooter();
   renderCamera();
   checkChime();
@@ -309,13 +310,19 @@ async function main() {
   floor = await (await fetch("/api/floor")).json();
   for (const info of floor.tables) tables[info.id] = { info, t: null };
   document.getElementById("map").setAttribute("viewBox", `0 0 ${W} ${H}`);
-  document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => { view = b.dataset.view; save("tw-view", view); render(); }));
+  document.querySelectorAll("header .seg button").forEach((b) => b.addEventListener("click", () => {
+    view = b.dataset.view; save("tw-view", view); render();
+    if (view === "reports") window.Reports.open();
+  }));
   document.getElementById("theme").addEventListener("click", () => { theme = theme === "light" ? "dark" : "light"; save("tw-theme", theme); render(); });
   document.getElementById("sound").addEventListener("click", toggleSound);
   document.body.addEventListener("click", (e) => { const a = e.target.closest("[data-act]"); if (a) onAct(a.dataset.act); });
+  if (!["map", "list", "reports"].includes(view)) view = "map";
   render();
+  if (view === "reports") window.Reports.open();
   connect();
   setInterval(render, 1000);
+  setInterval(() => { if (view === "reports") window.Reports.refresh(); }, 120000);
   // Full refresh every 30 s: picks up the camera's heartbeat and anything missed.
   setInterval(() => loadAll().catch(() => setOnline(false)), 30000);
   // iPad wakes from sleep: refresh everything.

@@ -141,7 +141,8 @@ def test_empty_time_between_parties_and_visit_record():
     old = t
     t = observe(t, False, False, 3300, N, dish_count=0)      # bussed
     assert finished_visit(old, t) == {"table_id": "T1", "seated_at": 0, "left_at": 3000,
-                                      "first_service": 300, "empty_before": None}
+                                      "first_service": 300, "empty_before": None,
+                                      "cleared_at": 3300, "went_red": True}
     assert t["free_since"] == 3300
     t = observe(t, False, True, 3400, N, dish_count=3)       # reset: still free
     assert t["state"] == FREE and t["free_since"] == 3300
