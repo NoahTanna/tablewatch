@@ -1,14 +1,14 @@
 # TableWatch
 
-A live floor map on an iPad at the host stand, driven by the dining-room camera. It is **quiet by design**: only two things raise a banner and a soft chime, because those are the two things staff can act on right now.
+A live screen on an iPad at the host stand, driven by the dining-room camera. Two views of the same tables: a **Map** of the room, where a ring around each table fills as the meal goes on, and a **List** of lanes sorted by what to do (Clear now, Needs service, Eating, Wrapping up, Open). Light by default; staff can switch to **Dark**. The iPad remembers both choices. To force them, add `?view=list` or `?theme=dark` to the address. It is **quiet by design**: only two things raise a banner and a soft chime, because those are the two things staff can act on right now.
 
 | Tile | Meaning | Sound? |
 |---|---|---|
 | **Red, CLEAR + timer** | Guests left dishes behind and nobody has been to the table for 3 min. Tap it once it's cleared. | Banner + chime |
 | **Orange, WAITING** | Guests sat down and nothing has arrived or been taken away for 10 min. Tap it once someone has been there. | Banner + chime |
-| Gray, SEATED / SERVED / PLATES GONE | Meal stage, with minutes since they sat | Silent |
-| Dark gray, GUESTS LEFT | Guests are gone, dishes still there (turns red after 3 min) | Silent |
-| Green, FREE | Ready to seat. After a turn it shows "empty 6 min" | Silent |
+| Just seated / Eating / Plates gone | Meal stage, with minutes since they sat (ring around the table on the map) | Silent |
+| Dashed outline, Guests left | Guests are gone, dishes still there (turns red after 3 min) | Silent |
+| Green, Free | Ready to seat. After a turn it shows how long it's been empty | Silent |
 | *check?* chip | Plates gone for 10 min, guests still sitting: maybe waiting for the check (a hint; the camera is weakest here) | Silent |
 | *long stay* chip | Seated much longer than tonight's typical party (90 min until there's enough data) | Silent |
 
@@ -46,7 +46,9 @@ Settings (environment variables, in minutes; on the mini PC, put them in `deploy
 
 Also: `PORT` (8000), `TABLEWATCH_DB` (`tablewatch.db`; demo mode uses `demo.db`), `TABLEWATCH_FLOOR` (`config/floor.json`).
 
-`docs/demo.html` is a standalone copy of the dashboard that runs in any browser with no server, for showing the idea. It plays a sped-up dinner service and has a "pretend camera" panel for walking one table through a meal.
+`docs/demo.html` is the real dashboard plus a stand-in server that plays a sped-up dinner service, all in one file that runs in any browser. Rebuild it after changing the dashboard: `python tools/build_demo.py`.
+
+The floor map comes from `config/floor.json`: each table's position (% of the room), shape (`round`, `square`, `booth`, `rect`), seats and section, plus optional landmarks like the bar and the host stand.
 
 ### Open it on an iPad (same Wi-Fi)
 

@@ -1,134 +1,220 @@
-// TableWatch dashboard: floor map + live updates over Server-Sent Events.
+// TableWatch host-stand screen: live table states over Server-Sent Events,
+// shown as a floor map (with meal rings) or as lanes by what to do.
 //
-// Quiet by design: only two things raise the banner and chime (a table to clear,
-// a table nobody has served). Stages, hints and timers are plain text on the tiles.
-const LABELS = {
-  FREE: "FREE", SEATED: "SEATED", SERVED: "SERVED", FINISHING: "PLATES GONE",
-  LEFT: "GUESTS LEFT", CLEAR: "CLEAR",
-};
-const HINTS = { check: "check?", long_stay: "long stay" };
-const floorEl = document.getElementById("floor");
-const tiles = {};   // table id -> {el, table, info}
-let clockOffset = 0; // server time - local time, in seconds
-let lastEventAt = null; // server time of the camera's last report
+// Quiet by design: only two things raise the alert strip and chime (a table to
+// clear, a table nobody has served). Stages, hints and timers are plain text.
+
+const tables = {};       // table id -> { info (from floor.json), t (from the server) }
+let floor = null;
+let clockOffset = 0;     // server time - local time, in seconds
+let lastEventAt = null;  // server time of the camera's last report
 let summary = null;
+let view = "map", theme = "light";
 const CAMERA_STALE_S = 120;
-const alerted = new Set(); // "T3:clear" keys already chimed for
+const MEAL_TYPICAL_S = 75 * 60; // only used to draw how far round the meal ring is
 
-function nowServer() { return Date.now() / 1000 + clockOffset; }
+const nowServer = () => Date.now() / 1000 + clockOffset;
+const mins = (s) => { s = Math.max(0, Math.floor(s / 60)); return s >= 60 ? `${Math.floor(s / 60)} h ${String(s % 60).padStart(2, "0")}` : `${s} min`; };
+const clock = (s) => { s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+const icon = (name) => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ICON = { FREE: "free", SEATED: "seat", WAIT: "wait", EATING: "eat", FINISHING: "check", LEFT: "left", CLEAR: "clear" };
 
-function mins(secs) { return Math.max(0, Math.floor(secs / 60)); }
-function clock(secs) {
-  secs = Math.max(0, Math.floor(secs));
-  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
-}
+// ---------- Settings remembered on this iPad ----------
+function load(key, fallback) { try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; } }
+function save(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode: fine */ } }
 
-function sizeFor(t) {
-  // Size in vmin, from seat count and shape. Big enough to tap easily.
-  const base = t.seats <= 2 ? 15 : 17;
-  const wide = t.shape === "rect" ? Math.max(1.4, t.seats / 4) : 1;
-  return { w: base * wide, h: base };
-}
-
-function buildFloor(floor) {
-  floorEl.innerHTML = "";
-  for (const t of floor.tables) {
-    const el = document.createElement("div");
-    const s = sizeFor(t);
-    el.className = `table ${t.shape}`;
-    el.style.left = t.x + "%";
-    el.style.top = t.y + "%";
-    el.style.width = s.w + "vmin";
-    el.style.height = s.h + "vmin";
-    el.innerHTML = `<div class="name"></div><div class="label"></div><div class="timer"></div><div class="hints"></div>`;
-    el.querySelector(".name").textContent = t.name;
-    el.addEventListener("click", () => onTap(t.id));
-    floorEl.appendChild(el);
-    tiles[t.id] = { el, table: null, info: t };
-  }
-}
-
-function render(table) {
-  const tile = tiles[table.id];
-  if (!tile) return;
-  tile.table = table;
-  const el = tile.el;
-  el.classList.remove(...Object.keys(LABELS), "not_served");
-  el.classList.add(table.stage);
-  if (table.alert === "not_served") el.classList.add("not_served");
-  el.querySelector(".label").textContent = table.alert === "not_served" ? "WAITING" : LABELS[table.stage];
-  const hints = el.querySelector(".hints");
-  hints.innerHTML = "";
-  for (const h of table.hints || []) {
-    const span = document.createElement("span");
-    span.className = "hint";
-    span.textContent = HINTS[h] || h;
-    hints.appendChild(span);
-  }
-  renderTimer(tile);
-}
-
-function renderTimer(tile) {
-  const t = tile.table, now = nowServer();
-  let text = "";
-  if (t.stage === "CLEAR") text = clock(now - t.unattended_since);
-  else if (t.stage === "LEFT") text = `left ${clock(now - t.unattended_since)}`;
-  else if (t.alert === "not_served") text = `${mins(now - t.seated_at)} min`;
-  else if ((t.stage === "SEATED" || t.stage === "SERVED") && now - t.seated_at >= 60) text = `${mins(now - t.seated_at)} min`;
-  else if (t.stage === "FINISHING" && now - t.plates_gone_since >= 60) text = `${mins(now - t.plates_gone_since)} min`;
-  else if (t.stage === "FREE" && t.free_since != null && now - t.free_since >= 60) text = `empty ${mins(now - t.free_since)} min`;
-  tile.el.querySelector(".timer").textContent = text;
-}
-
-function renderSummary() {
-  if (!summary) return;
-  const s = summary;
-  document.getElementById("f-tables").textContent = `${s.tables_in_use} / ${s.tables_total}`;
-  document.getElementById("f-seats").textContent = `${s.seats_in_use} / ${s.seats_total}`;
-  document.getElementById("f-bar").style.width = s.tables_total ? `${(100 * s.tables_in_use) / s.tables_total}%` : "0";
-  const parts = [];
-  const approx = (secs) => (secs < 60 ? "under 1 min" : `~${Math.round(secs / 60)} min`);
-  if (s.avg_first_service != null) parts.push(`First service ${approx(s.avg_first_service)}`);
-  if (s.avg_empty_between != null) parts.push(`Empty between parties ${approx(s.avg_empty_between)}`);
-  document.getElementById("tonight").textContent = parts.length ? `Tonight: ${parts.join(" · ")}` : "";
-}
-
-function renderBanner() {
-  const items = [];
-  let anyClear = false;
-  const now = nowServer();
-  const live = new Set();
-  let fresh = false;
-  for (const id in tiles) {
-    const { table, info } = tiles[id];
-    if (!table || !table.alert) continue;
-    const key = `${id}:${table.alert}`;
-    live.add(key);
-    if (table.alert === "clear") {
-      anyClear = true;
-      items.push(`Table ${info.name}: clear it (${clock(now - table.unattended_since)})`);
-    } else {
-      items.push(`Table ${info.name}: nothing served for ${mins(now - table.seated_at)} min`);
+// ---------- What each table shows ----------
+function status(t) {
+  const n = nowServer();
+  let key = { SERVED: "EATING", CLEAR: "CLEAR", LEFT: "LEFT", FINISHING: "FINISHING", SEATED: "SEATED", FREE: "FREE" }[t.stage] || "FREE";
+  if (t.alert === "not_served") key = "WAIT";
+  const seatedFor = t.seated_at != null ? n - t.seated_at : 0;
+  let label = "", time = "", age = 0;
+  switch (key) {
+    case "CLEAR": label = "Clear table"; age = n - t.unattended_since; time = clock(age); break;
+    case "LEFT": label = "Guests left"; age = n - t.unattended_since; time = clock(age); break;
+    case "WAIT": label = "Nothing served"; age = seatedFor; time = mins(age); break;
+    case "SEATED": label = "Just seated"; time = seatedFor >= 60 ? mins(seatedFor) : ""; break;
+    case "EATING": label = "Eating"; time = seatedFor >= 60 ? mins(seatedFor) : ""; break;
+    case "FINISHING": label = "Plates gone"; time = n - t.plates_gone_since >= 60 ? mins(n - t.plates_gone_since) : ""; break;
+    default: {
+      const emptyFor = t.free_since != null && n - t.free_since >= 60;
+      label = emptyFor ? "Empty for" : "Free"; time = emptyFor ? mins(n - t.free_since) : "";
     }
-    if (!alerted.has(key)) { alerted.add(key); fresh = true; }
   }
-  if (fresh) chime(); // one chime even if several alerts appear at once
-  for (const key of [...alerted]) if (!live.has(key)) alerted.delete(key);
-  const b = document.getElementById("banner");
-  b.hidden = items.length === 0;
-  b.classList.toggle("only-attention", !anyClear);
-  b.innerHTML = "";
-  for (const text of items) {
-    const span = document.createElement("span");
-    span.textContent = text;
-    b.appendChild(span);
+  const alert = key === "CLEAR" ? "clear" : key === "WAIT" ? "wait" : null;
+  return { key, label, time, age, alert, hints: t.hints || [], seatedFor };
+}
+const HINT_TEXT = { check: "check?", long_stay: "long stay" };
+
+// ---------- Map view ----------
+const W = 1000, H = 700;
+function geo(info) {
+  const shape = info.shape || "square";
+  const base = { round: [74, 74], square: [90, 90], booth: [118, 84], rect: [60 + 26 * (info.seats || 6), 66] }[shape] || [90, 90];
+  return { x: info.x * W / 100, y: info.y * H / 100, w: info.w ? info.w * W / 100 : base[0], h: info.h ? info.h * H / 100 : base[1], shape, seats: info.seats || 4 };
+}
+function chairs(g) {
+  const out = [], { x, y, w, h } = g;
+  const r = (cx, cy, cw, ch) => out.push(`<rect x="${cx - cw / 2}" y="${cy - ch / 2}" width="${cw}" height="${ch}" rx="6" style="fill:var(--chair)"/>`);
+  if (g.shape === "round") { r(x - w / 2 - 15, y, 16, 34); r(x + w / 2 + 15, y, 16, 34); }
+  else if (g.shape === "booth") { r(x - w / 2 - 16, y, 20, h + 12); r(x + w / 2 + 16, y, 20, h + 12); }
+  else if (g.shape === "rect") {
+    const perSide = Math.max(1, Math.round((g.seats - 2) / 2)), step = w / perSide;
+    for (let i = 0; i < perSide; i++) { const cx = x - w / 2 + step * (i + 0.5); r(cx, y - h / 2 - 14, Math.min(40, step - 8), 14); r(cx, y + h / 2 + 14, Math.min(40, step - 8), 14); }
+    r(x - w / 2 - 14, y, 14, 36); r(x + w / 2 + 14, y, 14, 36);
+  } else { r(x, y - h / 2 - 14, 36, 14); r(x, y + h / 2 + 14, 36, 14); r(x - w / 2 - 14, y, 14, 36); r(x + w / 2 + 14, y, 14, 36); }
+  return out.join("");
+}
+function shapeEl(g, style, extra = "") {
+  return g.shape === "round"
+    ? `<circle cx="${g.x}" cy="${g.y}" r="${g.w / 2}" style="${style}" ${extra}/>`
+    : `<rect x="${g.x - g.w / 2}" y="${g.y - g.h / 2}" width="${g.w}" height="${g.h}" rx="${g.shape === "rect" ? 14 : 12}" style="${style}" ${extra}/>`;
+}
+function mealRing(g, s) {
+  let p = 0;
+  if (s.key === "SEATED" || s.key === "WAIT") p = 0.1;
+  else if (s.key === "EATING") p = Math.min(0.8, 0.25 + (s.seatedFor / MEAL_TYPICAL_S) * 0.55);
+  else if (s.key === "FINISHING") p = 0.9;
+  const pad = 9;
+  if (g.shape === "round") {
+    const r = g.w / 2 + pad, L = 2 * Math.PI * r;
+    return `<circle cx="${g.x}" cy="${g.y}" r="${r}" fill="none" style="stroke:var(--track)" stroke-width="7"/>` +
+      (p ? `<circle cx="${g.x}" cy="${g.y}" r="${r}" fill="none" style="stroke:var(--seat)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${p * L} ${L}" transform="rotate(-90 ${g.x} ${g.y})"/>` : "");
   }
+  const w = g.w + pad * 2, h = g.h + pad * 2, L = 2 * (w + h);
+  const box = `x="${g.x - w / 2}" y="${g.y - h / 2}" width="${w}" height="${h}" rx="16" fill="none" stroke-width="7"`;
+  return `<rect ${box} style="stroke:var(--track)"/>` + (p ? `<rect ${box} style="stroke:var(--seat)" stroke-linecap="round" pathLength="${L}" stroke-dasharray="${p * L} ${L}"/>` : "");
+}
+function roomEl() {
+  const room = (floor && floor.room) || {};
+  let out = `<rect x="20" y="24" width="960" height="652" rx="6" style="fill:var(--surface);stroke:var(--wall)" stroke-width="4"/>`;
+  for (const l of room.landmarks || []) {
+    const w = l.w * W / 100, h = l.h * H / 100, x = l.x * W / 100, y = l.y * H / 100, tall = h > w;
+    out += `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="8" style="fill:var(--chair)"/>` +
+      `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-size="14" style="fill:var(--faint)" ${tall ? `transform="rotate(90 ${x} ${y})"` : ""}>${esc(l.label)}</text>`;
+  }
+  for (const l of room.labels || []) out += `<text x="${l.x * W / 100}" y="${l.y * H / 100}" text-anchor="middle" font-size="13" style="fill:var(--faint)">${esc(l.text)}</text>`;
+  if (room.host) {
+    const x = room.host.x * W / 100, y = room.host.y * H / 100;
+    out += `<circle cx="${x}" cy="${y}" r="9" style="fill:var(--text)"/><text x="${x + 16}" y="${y + 5}" font-size="14" font-weight="700" style="fill:var(--text)">You</text>`;
+  }
+  return out;
+}
+function renderMap() {
+  let out = roomEl();
+  for (const id in tables) {
+    const { info, t } = tables[id];
+    if (!t) continue;
+    const g = geo(info), s = status(t);
+    const solid = s.alert === "clear" ? "var(--clear)" : s.alert === "wait" ? "var(--wait)" : null;
+    const free = s.key === "FREE", left = s.key === "LEFT";
+    const fill = solid || (free ? "var(--free-soft)" : "var(--surface)");
+    const stroke = solid || (free ? "var(--free)" : left ? "var(--left)" : "var(--track)");
+    const ink = solid ? "var(--on-alert)" : "var(--text)";
+    const small = g.shape === "round";
+    const timeText = free && s.time ? (small ? s.time : `empty ${s.time}`) : s.time;
+    out += `<g ${s.alert ? `class="tap" data-act="${esc(id)}"` : ""} aria-label="Table ${esc(info.name)}: ${s.label} ${s.time}">` +
+      chairs(g) + (solid || free ? "" : mealRing(g, s)) +
+      shapeEl(g, `fill:${fill};stroke:${stroke}`, `stroke-width="${solid ? 0 : 2.5}" ${left ? 'stroke-dasharray="6 5"' : ""}`) +
+      `<text x="${g.x}" y="${g.y + (timeText ? -3 : 10)}" text-anchor="middle" font-size="${small ? 28 : 32}" font-weight="800" style="fill:${ink}">${esc(info.name)}</text>` +
+      (timeText ? `<text x="${g.x}" y="${g.y + 19}" text-anchor="middle" font-size="${small ? 12.5 : 14}" font-weight="600" style="fill:${solid ? "var(--on-alert)" : "var(--muted)"}">${timeText}</text>` : "") +
+      s.hints.map((h, i) => `<g transform="translate(${g.x - 37} ${g.y + g.h / 2 + (g.shape === "booth" ? 14 : 28) + i * 24})"><rect width="74" height="21" rx="10.5" style="fill:var(--hint-bg);stroke:var(--hint-line)"/><text x="37" y="15" text-anchor="middle" font-size="12" font-weight="700" style="fill:var(--hint)">${HINT_TEXT[h] || h}</text></g>`).join("") +
+      `</g>`;
+  }
+  document.getElementById("map").innerHTML = out;
 }
 
-// --- Sound: one soft two-note chime per new alert. iPad Safari only plays sound
-// after a tap, so staff tap "Sound off" once per shift to turn it on.
+// ---------- List view ----------
+const LANES = [
+  { name: "Clear now", sub: "tap when cleared", c: "var(--clear)", keys: ["CLEAR"] },
+  { name: "Needs service", sub: "nothing on the table yet", c: "var(--wait)", keys: ["WAIT", "SEATED"] },
+  { name: "Eating", sub: "", c: "var(--seat)", keys: ["EATING"] },
+  { name: "Wrapping up", sub: "plates gone or just left", c: "var(--left)", keys: ["FINISHING", "LEFT"] },
+  { name: "Open", sub: "ready to seat", c: "var(--free)", keys: ["FREE"] },
+];
+const TICKET_COLOR = { CLEAR: "var(--clear)", WAIT: "var(--wait)", SEATED: "var(--track)", EATING: "var(--seat)", FINISHING: "var(--seat)", LEFT: "var(--left)", FREE: "var(--free)" };
+function renderList() {
+  const all = Object.entries(tables).filter(([, x]) => x.t).map(([id, x]) => ({ id, info: x.info, s: status(x.t) }));
+  document.getElementById("list-view").innerHTML = LANES.map((l) => {
+    const items = all.filter((x) => l.keys.includes(x.s.key)).sort((a, b) => (l.keys.indexOf(a.s.key) - l.keys.indexOf(b.s.key)) || (b.s.age - a.s.age));
+    return `<section class="lane" style="--c:${l.c}"><h2>${l.name} <span>${items.length}</span></h2>${l.sub ? `<div class="sub">${l.sub}</div>` : ""}
+      <div class="tickets">${items.length ? items.map(({ id, info, s }) => {
+        const tag = s.alert ? "button" : "div";
+        return `<${tag} class="ticket ${s.alert ? "act" : ""}" ${s.alert ? `data-act="${esc(id)}"` : ""} style="--c:${TICKET_COLOR[s.key]}">
+          <div class="num">${esc(info.name)}</div>
+          <div class="what">${icon(ICON[s.key])}<span>${s.label}</span></div>
+          <div class="time">${s.time || (s.key === "FREE" ? "ready" : "just now")}</div>
+          <div class="meta"><span>${info.seats || "?"} seats${info.section ? " · " + esc(info.section) : ""}</span>${s.hints.map((h) => `<span class="h">${HINT_TEXT[h] || h}</span>`).join("")}</div>
+          ${s.alert ? `<div class="do">${s.alert === "clear" ? "Tap when cleared" : "Tap once someone has been over"}</div>` : ""}
+        </${tag}>`;
+      }).join("") : `<div class="empty">none</div>`}</div></section>`;
+  }).join("");
+}
+
+// ---------- Header, alerts, footer ----------
+function renderHeader() {
+  document.getElementById("clock").textContent = new Date(nowServer() * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (summary) {
+    const s = summary;
+    const dots = document.getElementById("dots");
+    dots.classList.toggle("bar", s.tables_total > 16); // a dot per table, or a bar for big rooms
+    dots.innerHTML = s.tables_total > 16
+      ? `<i style="width:${(100 * s.tables_in_use) / Math.max(1, s.tables_total)}%"></i>`
+      : Array.from({ length: s.tables_total }, (_, i) => `<i class="${i < s.tables_in_use ? "on" : ""}"></i>`).join("");
+    document.getElementById("fill-text").innerHTML = `<b>${s.tables_in_use} of ${s.tables_total}</b> tables · <b>${s.seats_in_use} of ${s.seats_total}</b> seats`;
+  }
+  document.getElementById("v-map").setAttribute("aria-pressed", view === "map");
+  document.getElementById("v-list").setAttribute("aria-pressed", view === "list");
+  document.getElementById("theme").innerHTML = theme === "light" ? `${icon("moon")}Dark` : `${icon("sun")}Light`;
+  const snd = document.getElementById("sound");
+  snd.innerHTML = `${icon("bell")}${audio ? "Sound on" : "Sound off"}`;
+  snd.classList.toggle("on", !!audio);
+}
+function urgent() {
+  return Object.entries(tables).filter(([, x]) => x.t).map(([id, x]) => ({ id, info: x.info, s: status(x.t) }))
+    .filter((x) => x.s.alert)
+    .sort((a, b) => (a.s.alert === b.s.alert ? b.s.age - a.s.age : a.s.alert === "clear" ? -1 : 1));
+}
+function renderAlerts() {
+  const el = document.getElementById("alerts");
+  if (view === "list") { el.innerHTML = ""; return; } // the first two lanes are the alerts
+  const u = urgent();
+  el.innerHTML = u.length ? u.map(({ id, info, s }) => `<button class="alert ${s.alert}" data-act="${esc(id)}">${icon(ICON[s.key])}
+      <span>Table ${esc(info.name)} <small>${s.alert === "clear" ? `clear it · ${s.time}` : `nothing served · ${s.time}`}</small></span>
+      <em>${s.alert === "clear" ? "Cleared" : "Visited"}</em></button>`).join("")
+    : `<div class="calm">All good. Nothing needs you right now.</div>`;
+}
+function renderFooter() {
+  const parts = [];
+  const approx = (secs) => (secs < 60 ? "under 1 min" : `${Math.round(secs / 60)} min`);
+  if (summary && summary.avg_first_service != null) parts.push(`<span>First service tonight <b>${approx(summary.avg_first_service)}</b></span>`);
+  if (summary && summary.avg_empty_between != null) parts.push(`<span>Empty between parties <b>${approx(summary.avg_empty_between)}</b></span>`);
+  if (!parts.length) parts.push(`<span>Tonight's averages appear once the first parties have left.</span>`);
+  const key = view === "map" ? `<div class="key">
+      <span><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" style="stroke:var(--track)" stroke-width="3"/><path d="M10 3a7 7 0 0 1 7 7" fill="none" style="stroke:var(--seat)" stroke-width="3" stroke-linecap="round"/></svg>ring fills as the meal goes on</span>
+      <span><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" style="fill:var(--free-soft);stroke:var(--free)" stroke-width="2"/></svg>free</span>
+      <span><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" style="fill:var(--surface);stroke:var(--left)" stroke-width="2" stroke-dasharray="4 3"/></svg>guests left</span>
+    </div>` : "";
+  document.getElementById("footer").innerHTML = parts.join("") + key;
+}
+function render() {
+  document.documentElement.dataset.theme = theme;
+  document.getElementById("map-view").hidden = view !== "map";
+  document.getElementById("list-view").hidden = view !== "list";
+  renderHeader();
+  renderAlerts();
+  if (view === "map") renderMap(); else renderList();
+  renderFooter();
+  renderCamera();
+  checkChime();
+}
+
+// ---------- Sound: one soft two-note chime per new alert ----------
+// iPad Safari only plays sound after a tap, so staff tap "Sound off" once per shift.
 let audio = null;
-function soundOn() { return audio != null; }
+const chimed = new Set();
 function chime() {
   if (!audio) return;
   const t0 = audio.currentTime;
@@ -143,60 +229,65 @@ function chime() {
     osc.stop(t0 + at + 0.55);
   });
 }
-function toggleSound() {
-  const btn = document.getElementById("sound");
-  if (soundOn()) { audio.close(); audio = null; }
-  else {
-    try { audio = new (window.AudioContext || window.webkitAudioContext)(); chime(); } catch (e) { audio = null; }
+function checkChime() {
+  let fresh = false;
+  const live = new Set();
+  for (const { id, s } of urgent()) {
+    const k = id + ":" + s.alert;
+    live.add(k);
+    if (!chimed.has(k)) { chimed.add(k); fresh = true; }
   }
-  btn.textContent = soundOn() ? "Sound on" : "Sound off";
-  btn.classList.toggle("on", soundOn());
+  for (const k of [...chimed]) if (!live.has(k)) chimed.delete(k);
+  if (fresh) chime(); // one chime even if several alerts appear at once
+}
+function toggleSound() {
+  if (audio) { audio.close(); audio = null; }
+  else { try { audio = new (window.AudioContext || window.webkitAudioContext)(); chime(); } catch (e) { audio = null; } }
+  render();
 }
 
+// ---------- Actions ----------
 async function post(id, action) {
   try {
     const r = await fetch(`/api/tables/${encodeURIComponent(id)}/${action}`, { method: "POST" });
-    if (r.ok) { render(await r.json()); renderBanner(); }
+    if (r.ok) { tables[id].t = await r.json(); render(); }
   } catch (e) { setOnline(false); }
 }
-
-function onTap(id) {
-  const t = tiles[id].table;
-  if (!t) return;
-  if (t.stage === "CLEAR") post(id, "clear");
-  else if (t.alert === "not_served") post(id, "served"); // "we've been there"
+function onAct(id) {
+  const x = tables[id];
+  if (!x || !x.t) return;
+  const s = status(x.t);
+  if (s.alert === "clear") post(id, "clear");
+  else if (s.alert === "wait") post(id, "served"); // "someone has been over"
 }
 
+// ---------- Connection and camera health ----------
 async function loadAll() {
   const data = await (await fetch("/api/tables")).json();
   clockOffset = data.now - Date.now() / 1000;
   lastEventAt = data.last_event_at;
   summary = data.summary;
-  data.tables.forEach(render);
-  renderSummary();
-  renderBanner();
-  renderCamera();
+  for (const t of data.tables) if (tables[t.id]) tables[t.id].t = t;
+  render();
 }
-
 function renderCamera() {
   const el = document.getElementById("nocam");
+  const offline = !document.getElementById("offline").hidden;
   const age = lastEventAt == null ? null : nowServer() - lastEventAt;
   const stale = age == null || age > CAMERA_STALE_S;
-  el.hidden = !stale || !document.getElementById("offline").hidden;
+  el.hidden = !stale || offline;
   el.textContent = age == null
     ? "Waiting for camera data… (table colors are not live yet)"
     : `No camera data for ${Math.floor(age / 60)} min. Check the camera box. Table colors may be out of date.`;
-  document.body.classList.toggle("stale", stale || !document.getElementById("offline").hidden);
+  document.body.classList.toggle("stale", stale || offline);
 }
-
 function setOnline(ok) {
-  document.body.classList.toggle("stale", !ok);
   document.getElementById("offline").hidden = ok;
   const c = document.getElementById("conn");
   c.textContent = ok ? "Live" : "Offline";
   c.classList.toggle("ok", ok);
+  renderCamera();
 }
-
 function connect() {
   const es = new EventSource("/api/stream");
   es.onopen = () => { setOnline(true); loadAll().catch(() => setOnline(false)); };
@@ -205,29 +296,30 @@ function connect() {
     clockOffset = msg.now - Date.now() / 1000;
     lastEventAt = msg.last_event_at;
     summary = msg.summary;
-    render(msg.table);
-    renderSummary();
-    renderBanner();
-    renderCamera();
+    if (tables[msg.table.id]) tables[msg.table.id].t = msg.table;
+    render();
   };
   es.onerror = () => setOnline(false); // EventSource reconnects by itself
 }
 
 async function main() {
-  buildFloor(await (await fetch("/api/floor")).json());
+  const params = new URLSearchParams(location.search);
+  view = params.get("view") || load("tw-view", "map");
+  theme = params.get("theme") || load("tw-theme", "light");
+  floor = await (await fetch("/api/floor")).json();
+  for (const info of floor.tables) tables[info.id] = { info, t: null };
+  document.getElementById("map").setAttribute("viewBox", `0 0 ${W} ${H}`);
+  document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => { view = b.dataset.view; save("tw-view", view); render(); }));
+  document.getElementById("theme").addEventListener("click", () => { theme = theme === "light" ? "dark" : "light"; save("tw-theme", theme); render(); });
   document.getElementById("sound").addEventListener("click", toggleSound);
+  document.body.addEventListener("click", (e) => { const a = e.target.closest("[data-act]"); if (a) onAct(a.dataset.act); });
+  render();
   connect();
-  setInterval(() => {
-    Object.values(tiles).forEach((t) => t.table && renderTimer(t));
-    renderBanner();
-    renderCamera();
-  }, 1000);
+  setInterval(render, 1000);
   // Full refresh every 30 s: picks up the camera's heartbeat and anything missed.
   setInterval(() => loadAll().catch(() => setOnline(false)), 30000);
   // iPad wakes from sleep: refresh everything.
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) loadAll().catch(() => setOnline(false));
-  });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) loadAll().catch(() => setOnline(false)); });
 }
 
 main().catch(() => { setOnline(false); setTimeout(() => location.reload(), 5000); });

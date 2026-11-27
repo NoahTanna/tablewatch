@@ -1,16 +1,28 @@
 {
-  "_comment": "Floor map for the dashboard. x/y = tile center as % of the floor area. shape: round | square | rect.",
+  "_comment": "Floor map for the iPad. Positions are % of the room (x from the left, y from the top) and mark each table's center. shape: round | square | booth | rect. Optional w/h (in % of room width/height) override the size. section shows in the list view. room.landmarks are drawn as labeled blocks (bar, counters); room.labels are plain text; room.host marks the host stand.",
+  "room": {
+    "landmarks": [{"label": "bar", "x": 92.8, "y": 44.3, "w": 5.6, "h": 67}],
+    "labels": [
+      {"text": "window", "x": 35, "y": 7},
+      {"text": "kitchen", "x": 86, "y": 95},
+      {"text": "entrance", "x": 12, "y": 95}
+    ],
+    "host": {"x": 7, "y": 89.3}
+  },
   "tables": [
-    {"id": "T1", "name": "1", "x": 14, "y": 18, "shape": "round",  "seats": 2},
-    {"id": "T2", "name": "2", "x": 38, "y": 18, "shape": "round",  "seats": 2},
-    {"id": "T3", "name": "3", "x": 62, "y": 18, "shape": "square", "seats": 4},
-    {"id": "T4", "name": "4", "x": 86, "y": 18, "shape": "square", "seats": 4},
-    {"id": "T5", "name": "5", "x": 14, "y": 50, "shape": "square", "seats": 4},
-    {"id": "T6", "name": "6", "x": 44, "y": 50, "shape": "rect",   "seats": 6},
-    {"id": "T7", "name": "7", "x": 80, "y": 50, "shape": "rect",   "seats": 8},
-    {"id": "T8", "name": "8", "x": 14, "y": 82, "shape": "round",  "seats": 2},
-    {"id": "T9", "name": "9", "x": 38, "y": 82, "shape": "square", "seats": 4},
-    {"id": "T10", "name": "10", "x": 62, "y": 82, "shape": "square", "seats": 4},
-    {"id": "T11", "name": "11", "x": 86, "y": 82, "shape": "round", "seats": 2}
+    {"id": "T1", "name": "1", "x": 12, "y": 16, "shape": "round", "seats": 2, "section": "Window"},
+    {"id": "T2", "name": "2", "x": 26.2, "y": 16, "shape": "round", "seats": 2, "section": "Window"},
+    {"id": "T3", "name": "3", "x": 40.4, "y": 16, "shape": "round", "seats": 2, "section": "Window"},
+    {"id": "T4", "name": "4", "x": 54.6, "y": 16, "shape": "round", "seats": 2, "section": "Window"},
+    {"id": "T5", "name": "5", "x": 15, "y": 42.9, "shape": "square", "seats": 4, "section": "Main"},
+    {"id": "T6", "name": "6", "x": 32.6, "y": 42.9, "shape": "square", "seats": 4, "section": "Main"},
+    {"id": "T7", "name": "7", "x": 50.2, "y": 42.9, "shape": "square", "seats": 4, "section": "Main"},
+    {"id": "T8", "name": "8", "x": 15, "y": 67.1, "shape": "square", "seats": 4, "section": "Main"},
+    {"id": "T9", "name": "9", "x": 32.6, "y": 67.1, "shape": "square", "seats": 4, "section": "Main"},
+    {"id": "T10", "name": "10", "x": 50.2, "y": 67.1, "shape": "square", "seats": 4, "section": "Main"},
+    {"id": "T11", "name": "11", "x": 73.5, "y": 20, "shape": "booth", "seats": 4, "section": "Booths"},
+    {"id": "T12", "name": "12", "x": 73.5, "y": 43.6, "shape": "booth", "seats": 4, "section": "Booths"},
+    {"id": "T13", "name": "13", "x": 73.5, "y": 67.1, "shape": "booth", "seats": 4, "section": "Booths"},
+    {"id": "T14", "name": "14", "x": 38, "y": 88.3, "shape": "rect", "seats": 8, "section": "Main"}
   ]
 }
